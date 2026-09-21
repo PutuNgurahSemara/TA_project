@@ -304,7 +304,7 @@ async function sendMessage() {
       if (elapsed > 20 && !assistant.thinkingStatus.dataset.custom) {
         assistant.thinkingStatus.textContent = "Sedang merumuskan jawaban mendalam...";
       } else if (elapsed > 8 && !assistant.thinkingStatus.dataset.custom) {
-        assistant.thinkingStatus.textContent = "Memproses dengan model qwen3.5:9b...";
+        assistant.thinkingStatus.textContent = "Memproses dengan model AI lokal...";
       }
     }
   }, 80);

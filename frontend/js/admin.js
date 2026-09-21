@@ -121,6 +121,14 @@ async function loadStats() {
       statDocCount.textContent = data.document_count || 0;
       statChunkCount.textContent = (data.total_chunks || 0).toLocaleString();
     }
+    const healthRes = await fetch("/api/health");
+    if (healthRes.ok) {
+      const healthData = await healthRes.json();
+      const el = document.getElementById("statEmbedModel");
+      if (el && healthData.ollama && healthData.ollama.embed_model) {
+        el.textContent = healthData.ollama.embed_model;
+      }
+    }
   } catch (e) {
     console.error("Gagal memuat stats:", e);
   }

@@ -17,7 +17,7 @@ from rag import vectorstore
 from rag.retriever import retrieve
 from rag.generator import generate_answer_stream
 from db.database import add_document_record, delete_document_record
-from config import CHUNK_SIZE, CHUNK_OVERLAP, TOP_K
+from config import CHUNK_SIZE, CHUNK_OVERLAP, TOP_K, EMBED_MODEL
 
 
 # ── Ingest ────────────────────────────────────────────────────────────────────
@@ -68,8 +68,8 @@ def ingest_document(
     if not chunks:
         raise ValueError("Tidak ada chunk yang dihasilkan dari dokumen.")
 
-    # Step 3: Embed (paling lambat — bge-m3 per chunk)
-    _update(f"🔢 Membuat embedding {len(chunks)} chunks via bge-m3 (harap tunggu)...", 0.35)
+    # Step 3: Embed
+    _update(f"🔢 Membuat embedding {len(chunks)} chunks via {EMBED_MODEL} (harap tunggu)...", 0.35)
     texts = [c["text"] for c in chunks]
     embeddings = embed_batch(texts)
 
