@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot RAG — Tugas Akhir</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.2">
+</head>
+
+<body>
+  <!-- SVG Gradient Definition for Gemini Sparkle -->
+  <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
+    <defs>
+      <linearGradient id="gemini-gradient-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#4285f4" />
+        <stop offset="50%" stop-color="#9b72cb" />
+        <stop offset="100%" stop-color="#d96570" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div class="app-container">
+    <!-- Top Navigation -->
+    <header class="top-nav">
+      <a href="/" class="brand-wrapper">
+        <svg class="gemini-sparkle-icon" viewBox="0 0 24 24">
+          <path
+            d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12z" />
+        </svg>
+        <span class="brand-title">Chatbot RAG</span>
+        <span class="brand-badge">Prototype</span>
+      </a>
+
+      <div class="nav-actions">
+        <div id="statusIndicator" class="status-indicator" title="Status koneksi Ollama dan database">
+          <span class="status-dot"></span>
+          <span id="statusText">Menghubungkan...</span>
+        </div>
+        <a href="/admin" class="btn-nav">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+          </svg>
+          Admin Dokumen
+        </a>
+      </div>
+    </header>
+
+    <!-- Chat Stream Scroll View -->
+    <main class="chat-scroll-container" id="chatScroll">
+      <div class="chat-inner" id="chatList">
+
+        <!-- Gemini Hero Greeting (Only shown initially) -->
+        <div class="hero-greeting" id="heroGreeting">
+          <h1 class="hero-title">Halo, ada yang bisa dibantu?</h1>
+          <p class="hero-subtitle">Tanyakan informasi, analisa, atau ringkasan dari dokumen referensi yang telah
+            diunggah.</p>
+
+          <div class="prompt-suggestions">
+            <div class="suggestion-card" onclick="usePrompt('Ringkas pokok bahasan utama dari dokumen ini.')">
+              <span class="suggestion-text">Ringkas pokok bahasan utama dari dokumen yang diunggah.</span>
+              <span class="suggestion-icon">📄</span>
+            </div>
+            <div class="suggestion-card"
+              onclick="usePrompt('Apa metodologi atau pendekatan yang digunakan dalam dokumen?')">
+              <span class="suggestion-text">Apa metodologi atau pendekatan yang digunakan dalam dokumen?</span>
+              <span class="suggestion-icon">🔍</span>
+            </div>
+            <div class="suggestion-card" onclick="usePrompt('Sebutkan temuan penting dan kesimpulan yang dihasilkan.')">
+              <span class="suggestion-text">Sebutkan temuan penting dan kesimpulan yang dihasilkan.</span>
+              <span class="suggestion-icon">💡</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Bottom Input Area (Gemini Floating Pill) -->
+    <footer class="input-area-wrapper">
+      <div class="input-pill-container">
+        <button id="btnClearChat" class="btn-icon" title="Hapus riwayat percakapan" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          </svg>
+        </button>
+
+        <textarea id="chatInput" class="chat-textarea" placeholder="Tanyakan sesuatu seputar dokumen..."
+          rows="1"></textarea>
+
+        <div class="input-actions">
+          <button id="btnSend" class="btn-icon btn-send" title="Kirim pesan" disabled type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="disclaimer-text">
+        Jawaban dihasilkan dari pencarian RAG dokumen internal menggunakan model lokal qwen3.5:9b sehingga masih
+        memungkinkan untuk adanya kesalahan.
+      </div>
+    </footer>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/static/js/chat.js?v=2.2"></script>
+</body>
+
+</html>
