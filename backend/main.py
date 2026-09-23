@@ -35,15 +35,31 @@ from db.database import (
     initialize_db,
 )
 from rag.pipeline import delete_document, ingest_document, query_rag
+from backend.security import InMemoryRateLimiter, get_client_ip
 
 # Inisialisasi DB SQLite saat startup
 initialize_db()
 
+# Inisialisasi FastAPI tanpa mengekspos dokumentasi Swagger / OpenAPI ke publik
 app = FastAPI(
     title="Chatbot RAG API",
     description="Backend API untuk Chatbot RAG Tugas Akhir",
     version="2.0.0",
+    docs_url=None,     # Matikan Swagger UI di /docs
+    redoc_url=None,    # Matikan Redoc di /redoc
+    openapi_url=None,  # Matikan schema di /openapi.json
 )
+
+# Inisialisasi Rate Limiter berbasis IP (mendukung Cloudflare)
+chat_limiter = InMemoryRateLimiter(
+    requests_limit=config.RATE_LIMIT_CHAT_PER_MINUTE,
+    window_seconds=60,
+)
+login_limiter = InMemoryRateLimiter(
+    requests_limit=5,
+    window_seconds=60,
+)
+
 
 # CORS Middleware (mendukung jika frontend dibuka dari origin berbeda)
 app.add_middleware(
@@ -128,7 +144,6 @@ def get_health():
         "status": "online",
         "ollama": {
             "connected": ollama_ok,
-            "base_url": config.OLLAMA_BASE_URL,
             "llm_model": config.LLM_MODEL,
             "embed_model": config.EMBED_MODEL,
         },
@@ -136,21 +151,40 @@ def get_health():
             "documents_count": stats["document_count"],
             "total_chunks": stats["total_chunks"],
         },
+        "security": {
+            "access_key_required": bool(config.CHAT_ACCESS_KEY),
+        },
     }
 
 
 # ── Chat Endpoint (Streaming SSE) ────────────────────────────────────────────
 
 @app.post("/api/chat")
-def chat_stream(req: ChatRequest):
+def chat_stream(req: ChatRequest, request: Request):
     """
     Streaming response RAG menggunakan Server-Sent Events (SSE).
-    Mengirimkan event:
-      1. 'status': progres tahapan AI (pencarian context, inisialisasi model)
-      2. 'sources': metadata chunk yang ditemukan & sitasi dokumen rujukan
-      3. 'token': potongan kata/token dari qwen3.5:9b secara real-time
-      4. 'done': penanda selesai dengan statistik
+    Dilengkapi Rate Limiting dan proteksi Access Key opsional.
     """
+    client_ip = get_client_ip(request)
+
+    # 1. Rate Limiting Protection (Anti-Spam / Anti-Overload)
+    allowed, retry_after = chat_limiter.is_allowed(client_ip)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Terlalu banyak permintaan dari IP Anda. Mohon tunggu {retry_after} detik sebelum bertanya lagi.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    # 2. Access Key Verification (jika diaktifkan di .env)
+    if config.CHAT_ACCESS_KEY:
+        client_key = request.headers.get("x-access-key", "").strip()
+        if client_key != config.CHAT_ACCESS_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Kode akses chat tidak valid atau belum diisi.",
+            )
+
     question = req.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Pertanyaan tidak boleh kosong.")
@@ -208,8 +242,17 @@ def chat_stream(req: ChatRequest):
 # ── Admin Endpoints ──────────────────────────────────────────────────────────
 
 @app.post("/api/admin/login")
-def admin_login(body: LoginRequest):
-    """Login admin menggunakan kredensial .env."""
+def admin_login(body: LoginRequest, request: Request):
+    """Login admin menggunakan kredensial .env dengan proteksi brute-force per IP."""
+    client_ip = get_client_ip(request)
+    allowed, retry_after = login_limiter.is_allowed(client_ip)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Terlalu banyak percobaan login yang gagal. Silakan tunggu {retry_after} detik.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     if verify_admin_credentials(body.username, body.password):
         token = create_session_token()
         return {"success": True, "token": token, "username": body.username}

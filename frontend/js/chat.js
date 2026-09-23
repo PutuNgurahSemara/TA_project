@@ -154,7 +154,7 @@ function usePrompt(text) {
   chatInput.focus();
 }
 
-// ── Health Check ──────────────────────────────────────────────
+// ── Health Check & Access Key Checking ────────────────────────
 async function checkHealth() {
   try {
     const res = await fetch("/api/health");
@@ -169,6 +169,13 @@ async function checkHealth() {
       dot.className = "status-dot error";
       statusText.textContent = "Ollama Offline";
     }
+
+    // Cek jika server mewajibkan kode akses dan belum tersimpan
+    if (data.security && data.security.access_key_required) {
+      if (!localStorage.getItem("chat_access_key")) {
+        showAccessKeyModal();
+      }
+    }
   } catch {
     const dot = statusIndicator.querySelector(".status-dot");
     dot.className = "status-dot error";
@@ -177,6 +184,36 @@ async function checkHealth() {
 }
 checkHealth();
 setInterval(checkHealth, 15000);
+
+// ── Modal Kode Akses (Proteksi Sesi Chat) ────────────────────
+function showAccessKeyModal(errorMsg = "") {
+  const modal = document.getElementById("accessKeyModal");
+  const err = document.getElementById("accessKeyError");
+  const input = document.getElementById("inputAccessKey");
+  if (modal) modal.style.display = "flex";
+  if (err) {
+    if (errorMsg) {
+      err.textContent = errorMsg;
+      err.style.display = "block";
+    } else {
+      err.style.display = "none";
+    }
+  }
+  if (input) {
+    input.value = "";
+    setTimeout(() => input.focus(), 150);
+  }
+}
+
+function submitAccessKey() {
+  const input = document.getElementById("inputAccessKey");
+  const val = input ? input.value.trim() : "";
+  if (!val) return;
+  localStorage.setItem("chat_access_key", val);
+  const modal = document.getElementById("accessKeyModal");
+  if (modal) modal.style.display = "none";
+  showToast("Kode akses tersimpan.");
+}
 
 // ── Chat Logic ────────────────────────────────────────────────
 function scrollToBottom() {
@@ -310,14 +347,28 @@ async function sendMessage() {
   }, 80);
 
   try {
+    const accessKey = localStorage.getItem("chat_access_key") || "";
     const res = await fetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Access-Key": accessKey,
+      },
       body: JSON.stringify({ question: question }),
     });
 
     if (!res.ok) {
-      throw new Error(`Server error: ${res.status}`);
+      let errMsg = `Server error: ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson.detail) errMsg = errJson.detail;
+      } catch { }
+
+      if (res.status === 403) {
+        localStorage.removeItem("chat_access_key");
+        showAccessKeyModal(errMsg);
+      }
+      throw new Error(errMsg);
     }
 
     const reader = res.body.getReader();

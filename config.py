@@ -31,3 +31,8 @@ DB_PATH:     str = str(BASE_DIR / "data.db")
 # ── Admin Auth ───────────────────────────────────────────────
 ADMIN_USERNAME:      str = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD_HASH: str = os.getenv("ADMIN_PASSWORD_HASH", "")
+
+# ── Security & Access Protection ─────────────────────────────
+CHAT_ACCESS_KEY: str = os.getenv("CHAT_ACCESS_KEY", "").strip()
+RATE_LIMIT_CHAT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_CHAT_PER_MINUTE", "10"))
+
