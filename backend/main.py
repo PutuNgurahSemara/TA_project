@@ -23,9 +23,10 @@ from pydantic import BaseModel
 import config
 from auth import (
     create_session_token,
+    get_session_user,
     revoke_session_token,
     verify_admin_credentials,
-    verify_session_token,
+    generate_hash,
 )
 from db.database import (
     delete_document_record,
@@ -33,6 +34,13 @@ from db.database import (
     get_document,
     get_stats,
     initialize_db,
+    get_all_admins,
+    get_admin_by_id,
+    get_admin_by_username,
+    create_admin,
+    update_admin,
+    delete_admin,
+    count_superadmins,
 )
 from rag.pipeline import delete_document, ingest_document, query_rag
 from backend.security import InMemoryRateLimiter, get_client_ip
@@ -88,8 +96,8 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 # ── Dependency: Admin Auth ───────────────────────────────────────────────────
 
-def require_admin(authorization: Optional[str] = Header(None)) -> str:
-    """Validasi Bearer token pada header Authorization."""
+def require_admin(authorization: Optional[str] = Header(None)) -> dict:
+    """Validasi Bearer token pada header Authorization dan kembalikan profil user."""
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -104,12 +112,23 @@ def require_admin(authorization: Optional[str] = Header(None)) -> str:
         )
     
     token = parts[1]
-    if not verify_session_token(token):
+    user = get_session_user(token)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Sesi tidak valid atau telah kedaluwarsa. Silakan login kembali.",
         )
-    return token
+    return user
+
+
+def require_superadmin(user: dict = Depends(require_admin)) -> dict:
+    """Validasi bahwa akun yang sedang login memiliki hak akses Super Admin."""
+    if user.get("role") != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akses ditolak. Fitur ini hanya dapat diakses oleh Super Admin.",
+        )
+    return user
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
@@ -122,6 +141,17 @@ class ChatRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "admin"  # "superadmin" atau "admin"
+
+
+class UpdateUserRequest(BaseModel):
+    role: Optional[str] = None
+    password: Optional[str] = None
 
 
 # ── Health & Status Endpoints ────────────────────────────────────────────────
@@ -243,7 +273,7 @@ def chat_stream(req: ChatRequest, request: Request):
 
 @app.post("/api/admin/login")
 def admin_login(body: LoginRequest, request: Request):
-    """Login admin menggunakan kredensial .env dengan proteksi brute-force per IP."""
+    """Login admin menggunakan verifikasi SQLite dengan proteksi brute-force per IP."""
     client_ip = get_client_ip(request)
     allowed, retry_after = login_limiter.is_allowed(client_ip)
     if not allowed:
@@ -253,9 +283,15 @@ def admin_login(body: LoginRequest, request: Request):
             headers={"Retry-After": str(retry_after)},
         )
 
-    if verify_admin_credentials(body.username, body.password):
-        token = create_session_token()
-        return {"success": True, "token": token, "username": body.username}
+    user = verify_admin_credentials(body.username, body.password)
+    if user:
+        token = create_session_token(user)
+        return {
+            "success": True,
+            "token": token,
+            "username": user["username"],
+            "role": user["role"],
+        }
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Username atau password admin salah.",
@@ -263,26 +299,101 @@ def admin_login(body: LoginRequest, request: Request):
 
 
 @app.post("/api/admin/logout")
-def admin_logout(token: str = Depends(require_admin)):
+def admin_logout(authorization: Optional[str] = Header(None)):
     """Logout admin dan hapus sesi."""
-    revoke_session_token(token)
+    if authorization:
+        parts = authorization.split()
+        if len(parts) == 2:
+            revoke_session_token(parts[1])
     return {"success": True, "message": "Berhasil logout."}
 
 
 @app.get("/api/admin/check-session")
-def check_session(token: str = Depends(require_admin)):
-    """Cek apakah sesi admin masih valid."""
-    return {"valid": True, "username": config.ADMIN_USERNAME}
+def check_session(user: dict = Depends(require_admin)):
+    """Cek apakah sesi admin masih valid dan return profil user."""
+    return {"valid": True, "id": user["id"], "username": user["username"], "role": user["role"]}
 
+
+# ── Super Admin User Management Endpoints ─────────────────────────────────────
+
+@app.get("/api/admin/users")
+def list_admin_users(_: dict = Depends(require_superadmin)):
+    """Ambil daftar semua admin (khusus Super Admin)."""
+    return {"users": get_all_admins()}
+
+
+@app.post("/api/admin/users")
+def add_admin_user(body: CreateUserRequest, _: dict = Depends(require_superadmin)):
+    """Tambah akun admin atau superadmin baru (khusus Super Admin)."""
+    username = body.username.strip()
+    if not username or len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username minimal 3 karakter.")
+    if not body.password or len(body.password) < 4:
+        raise HTTPException(status_code=400, detail="Password minimal 4 karakter.")
+    if body.role not in ["superadmin", "admin"]:
+        raise HTTPException(status_code=400, detail="Role harus 'superadmin' atau 'admin'.")
+
+    if get_admin_by_username(username):
+        raise HTTPException(status_code=400, detail=f"Username '{username}' sudah terdaftar.")
+
+    pwd_hash = generate_hash(body.password)
+    new_user = create_admin(username, pwd_hash, body.role)
+    return {"success": True, "message": f"Akun '{username}' ({body.role}) berhasil ditambahkan.", "user": new_user}
+
+
+@app.put("/api/admin/users/{user_id}")
+def edit_admin_user(user_id: int, body: UpdateUserRequest, current_user: dict = Depends(require_superadmin)):
+    """Ubah role atau password akun admin (khusus Super Admin)."""
+    target = get_admin_by_id(user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Akun admin tidak ditemukan.")
+
+    new_role = None
+    if body.role is not None:
+        if body.role not in ["superadmin", "admin"]:
+            raise HTTPException(status_code=400, detail="Role harus 'superadmin' atau 'admin'.")
+        if target["id"] == current_user["id"] and body.role != "superadmin":
+            if count_superadmins() <= 1:
+                raise HTTPException(status_code=400, detail="Tidak dapat mengubah role karena hanya tersisa 1 Super Admin.")
+        new_role = body.role
+
+    new_hash = None
+    if body.password is not None and body.password.strip():
+        if len(body.password) < 4:
+            raise HTTPException(status_code=400, detail="Password minimal 4 karakter.")
+        new_hash = generate_hash(body.password)
+
+    update_admin(user_id, role=new_role, password_hash=new_hash)
+    return {"success": True, "message": f"Akun '{target['username']}' berhasil diperbarui."}
+
+
+@app.delete("/api/admin/users/{user_id}")
+def remove_admin_user(user_id: int, current_user: dict = Depends(require_superadmin)):
+    """Hapus akun admin (khusus Super Admin)."""
+    target = get_admin_by_id(user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Akun admin tidak ditemukan.")
+
+    if target["id"] == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Anda tidak dapat menghapus akun Anda sendiri.")
+
+    if target["role"] == "superadmin" and count_superadmins() <= 1:
+        raise HTTPException(status_code=400, detail="Tidak dapat menghapus satu-satunya Super Admin.")
+
+    delete_admin(user_id)
+    return {"success": True, "message": f"Akun '{target['username']}' berhasil dihapus."}
+
+
+# ── Document Endpoints (Accessible by Admin & Superadmin) ─────────────────────
 
 @app.get("/api/admin/stats")
-def admin_stats(_: str = Depends(require_admin)):
+def admin_stats(_: dict = Depends(require_admin)):
     """Ambil statistik sistem untuk dashboard admin."""
     return get_stats()
 
 
 @app.get("/api/admin/documents")
-def list_documents(_: str = Depends(require_admin)):
+def list_documents(_: dict = Depends(require_admin)):
     """Daftar seluruh dokumen yang tersimpan di sistem."""
     return {"documents": get_all_documents()}
 
@@ -290,7 +401,7 @@ def list_documents(_: str = Depends(require_admin)):
 @app.post("/api/admin/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    _: str = Depends(require_admin),
+    _: dict = Depends(require_admin),
 ):
     """
     Upload dokumen (PDF, DOCX, TXT) dan jalankan pipeline ingest RAG.
@@ -338,7 +449,7 @@ async def upload_document(
 
 
 @app.delete("/api/admin/documents/{doc_id}")
-def remove_document(doc_id: str, _: str = Depends(require_admin)):
+def remove_document(doc_id: str, _: dict = Depends(require_admin)):
     """Hapus dokumen dari ChromaDB dan database SQLite."""
     doc = get_document(doc_id)
     if not doc:

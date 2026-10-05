@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dokumen — Chatbot RAG</title>
+  <title>Admin Panel — Chatbot RAG</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -29,10 +29,20 @@
           <path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12z" />
         </svg>
         <span class="brand-title">Admin Panel</span>
-        <span class="brand-badge">Dokumen RAG</span>
+        <span class="brand-badge">Sistem RAG</span>
       </a>
 
       <div class="nav-actions">
+        <!-- User Profile Pill -->
+        <div id="userBadge" class="user-pill" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span id="navUsername">admin</span>
+          <span id="navRoleBadge" class="badge-role-pill">Super Admin</span>
+        </div>
+
         <a href="/" class="btn-nav">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -55,7 +65,7 @@
           <path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12z" />
         </svg>
         <h2 style="font-size: 1.3rem; margin-bottom: 6px;">Login Administrator</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 24px;">Masukkan kredensial admin untuk mengelola basis dokumen RAG.</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 24px;">Masukkan kredensial admin untuk mengakses sistem.</p>
 
         <form id="loginForm">
           <div class="form-group">
@@ -72,93 +82,251 @@
 
       <!-- Admin Dashboard Section (shown when logged in) -->
       <div id="dashboardSection" style="display:none;">
-        <div class="admin-header">
-          <h1>Pusat Pengetahuan Dokumen</h1>
-          <p>Kelola file referensi Tugas Akhir yang diindeks ke dalam vector database (ChromaDB).</p>
-        </div>
-
-        <!-- Quick Stats Cards -->
-        <div class="admin-stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Total Dokumen</div>
-            <div class="stat-value" id="statDocCount">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Total Chunks Terindeks</div>
-            <div class="stat-value" id="statChunkCount">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Model Embedding</div>
-            <div class="stat-value" id="statEmbedModel" style="font-size: 1.3rem; font-weight: 500; margin-top: 4px;">-</div>
-          </div>
-        </div>
-
-        <!-- Document Upload Card -->
-        <div class="admin-card">
-          <h2>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            Unggah Dokumen Baru
-          </h2>
-
-          <input type="file" id="fileInput" accept=".pdf,.docx,.txt" style="display:none;">
-          <div class="dropzone" id="dropzone">
-            <div class="dropzone-icon">📄</div>
-            <div class="dropzone-text"><strong>Klik untuk memilih file</strong> atau seret dan lepas file di sini</div>
-            <div class="dropzone-hint">Mendukung file PDF, DOCX, dan TXT (Maks. 200MB)</div>
-          </div>
-
-          <div class="progress-container" id="progressContainer">
-            <div class="progress-label">
-              <span id="progressStatus">Memproses dokumen...</span>
-              <span id="progressPct">0%</span>
-            </div>
-            <div class="progress-bar-bg">
-              <div class="progress-bar-fill" id="progressBarFill"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Document List Table Card -->
-        <div class="admin-card">
-          <h2>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        
+        <!-- Navigation Tabs (Hanya ditampilkan/aktif untuk tab user jika superadmin) -->
+        <div class="admin-tabs" id="adminTabs">
+          <button type="button" class="admin-tab active" id="tabDocsBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
             </svg>
-            Daftar Dokumen Terdaftar
-          </h2>
+            Basis Dokumen RAG
+          </button>
+          <button type="button" class="admin-tab" id="tabUsersBtn" style="display:none;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Kelola Akun Admin
+            <span class="badge-role-pill">Super Admin</span>
+          </button>
+        </div>
 
-          <div class="table-responsive">
-            <table class="doc-table">
-              <thead>
-                <tr>
-                  <th>Nama File</th>
-                  <th>Tanggal Unggah</th>
-                  <th>Jumlah Chunk</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="docTableBody">
-                <tr>
-                  <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                    Memuat dokumen...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- PANEL 1: BASIS DOKUMEN -->
+        <div id="panelDocs">
+          <div class="admin-header">
+            <h1>Pusat Pengetahuan Dokumen</h1>
+            <p>Kelola file referensi Tugas Akhir yang diindeks ke dalam vector database (ChromaDB).</p>
+          </div>
+
+          <!-- Quick Stats Cards -->
+          <div class="admin-stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Dokumen</div>
+              <div class="stat-value" id="statDocCount">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Chunks Terindeks</div>
+              <div class="stat-value" id="statChunkCount">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Model Embedding</div>
+              <div class="stat-value" id="statEmbedModel" style="font-size: 1.3rem; font-weight: 500; margin-top: 4px;">-</div>
+            </div>
+          </div>
+
+          <!-- Document Upload Card -->
+          <div class="admin-card">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Unggah Dokumen Baru
+            </h2>
+
+            <input type="file" id="fileInput" accept=".pdf,.docx,.txt" style="display:none;">
+            <div class="dropzone" id="dropzone">
+              <div class="dropzone-icon">📄</div>
+              <div class="dropzone-text"><strong>Klik untuk memilih file</strong> atau seret dan lepas file di sini</div>
+              <div class="dropzone-hint">Mendukung file PDF, DOCX, dan TXT (Maks. 200MB)</div>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+              <div class="progress-label">
+                <span id="progressStatus">Memproses dokumen...</span>
+                <span id="progressPct">0%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Document List Table Card -->
+          <div class="admin-card">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+              Daftar Dokumen Terdaftar
+            </h2>
+
+            <div class="table-responsive">
+              <table class="doc-table">
+                <thead>
+                  <tr>
+                    <th>Nama File</th>
+                    <th>Tanggal Unggah</th>
+                    <th>Jumlah Chunk</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="docTableBody">
+                  <tr>
+                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                      Memuat dokumen...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2: MANAJEMEN AKUN ADMIN (Super Admin Only) -->
+        <div id="panelUsers" style="display:none;">
+          <div class="admin-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <h1>Manajemen Akun Administrator</h1>
+              <p>Kelola pengguna yang memiliki wewenang untuk mengelola basis dokumen dan sistem.</p>
+            </div>
+            <button type="button" id="btnOpenAddUserModal" class="btn-secondary" style="background: var(--accent-blue); color: #121314; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Tambah Admin Baru
+            </button>
+          </div>
+
+          <!-- Quick Stats Cards for Users -->
+          <div class="admin-stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Akun Admin</div>
+              <div class="stat-value" id="statTotalUsers">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Super Admin</div>
+              <div class="stat-value" id="statTotalSuperAdmin">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Admin Biasa</div>
+              <div class="stat-value" id="statTotalAdminRegular">0</div>
+            </div>
+          </div>
+
+          <!-- Admin Users Table Card -->
+          <div class="admin-card">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              Daftar Pengguna Administrator
+            </h2>
+
+            <div class="table-responsive">
+              <table class="doc-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Role (Peran)</th>
+                    <th>Tanggal Dibuat</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="userTableBody">
+                  <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                      Memuat daftar admin...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
       </div>
 
     </main>
+  </div>
+
+  <!-- Modal Tambah Admin Baru -->
+  <div id="addUserModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-content" style="text-align: left; max-width: 440px;">
+      <div class="modal-header-actions">
+        <h3 style="font-size: 1.15rem; font-weight: 600;">Tambah Administrator Baru</h3>
+        <button type="button" class="btn-close-modal" id="btnCloseAddUserModal">&times;</button>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px;">
+        Pilih peran yang tepat untuk akun baru ini.
+      </p>
+      <form id="addUserForm">
+        <div class="form-group">
+          <label class="form-label" for="newUsername">Username</label>
+          <input type="text" id="newUsername" class="form-input" placeholder="contoh: admin_kampus" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="newPassword">Password (Minimal 4 karakter)</label>
+          <input type="password" id="newPassword" class="form-input" placeholder="Masukkan password..." required autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="newRole">Role / Peran</label>
+          <select id="newRole" class="form-input" style="cursor: pointer;">
+            <option value="admin">Admin Biasa (Hanya CRUD Dokumen)</option>
+            <option value="superadmin">Super Admin (CRUD Dokumen & Akun)</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+          <button type="button" class="btn-secondary" id="btnCancelAddUser" style="flex: 1;">Batal</button>
+          <button type="submit" class="btn-primary" style="flex: 1; margin-top: 0;">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Edit Admin -->
+  <div id="editUserModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-content" style="text-align: left; max-width: 440px;">
+      <div class="modal-header-actions">
+        <h3 style="font-size: 1.15rem; font-weight: 600;">Ubah Akun Administrator</h3>
+        <button type="button" class="btn-close-modal" id="btnCloseEditUserModal">&times;</button>
+      </div>
+      <form id="editUserForm">
+        <input type="hidden" id="editUserId">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" id="editUsername" class="form-input" readonly style="opacity: 0.7; background: rgba(255,255,255,0.03);">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editRole">Role / Peran</label>
+          <select id="editRole" class="form-input" style="cursor: pointer;">
+            <option value="admin">Admin Biasa (Hanya CRUD Dokumen)</option>
+            <option value="superadmin">Super Admin (CRUD Dokumen & Akun)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editPassword">Password Baru (Kosongkan jika tidak ingin mengubah)</label>
+          <input type="password" id="editPassword" class="form-input" placeholder="Masukkan password baru..." autocomplete="new-password">
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+          <button type="button" class="btn-secondary" id="btnCancelEditUser" style="flex: 1;">Batal</button>
+          <button type="submit" class="btn-primary" style="flex: 1; margin-top: 0;">Perbarui</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <div id="toastContainer" class="toast-container"></div>

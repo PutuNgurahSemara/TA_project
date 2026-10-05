@@ -1,18 +1,30 @@
 /* ============================================================
-   admin.js — Admin Panel Handler (Auth, Upload, Document CRUD)
+   admin.js — Admin Panel Handler (Auth, Upload, Document CRUD, Multi-Admin CRUD)
    ============================================================ */
 
+// Sections & Auth Elements
 const loginSection = document.getElementById("loginSection");
 const dashboardSection = document.getElementById("dashboardSection");
 const loginForm = document.getElementById("loginForm");
 const usernameInput = document.getElementById("usernameInput");
 const passwordInput = document.getElementById("passwordInput");
 const btnLogout = document.getElementById("btnLogout");
+const userBadge = document.getElementById("userBadge");
+const navUsername = document.getElementById("navUsername");
+const navRoleBadge = document.getElementById("navRoleBadge");
 
+// Navigation Tabs & Panels
+const tabDocsBtn = document.getElementById("tabDocsBtn");
+const tabUsersBtn = document.getElementById("tabUsersBtn");
+const panelDocs = document.getElementById("panelDocs");
+const panelUsers = document.getElementById("panelUsers");
+
+// Document Stats & Table
 const statDocCount = document.getElementById("statDocCount");
 const statChunkCount = document.getElementById("statChunkCount");
 const docTableBody = document.getElementById("docTableBody");
 
+// File Upload Elements
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("fileInput");
 const progressContainer = document.getElementById("progressContainer");
@@ -20,7 +32,33 @@ const progressStatus = document.getElementById("progressStatus");
 const progressPct = document.getElementById("progressPct");
 const progressBarFill = document.getElementById("progressBarFill");
 
+// User Management Stats & Table
+const statTotalUsers = document.getElementById("statTotalUsers");
+const statTotalSuperAdmin = document.getElementById("statTotalSuperAdmin");
+const statTotalAdminRegular = document.getElementById("statTotalAdminRegular");
+const userTableBody = document.getElementById("userTableBody");
+
+// Modals & User Management Forms
+const btnOpenAddUserModal = document.getElementById("btnOpenAddUserModal");
+const addUserModal = document.getElementById("addUserModal");
+const btnCloseAddUserModal = document.getElementById("btnCloseAddUserModal");
+const btnCancelAddUser = document.getElementById("btnCancelAddUser");
+const addUserForm = document.getElementById("addUserForm");
+const newUsername = document.getElementById("newUsername");
+const newPassword = document.getElementById("newPassword");
+const newRole = document.getElementById("newRole");
+
+const editUserModal = document.getElementById("editUserModal");
+const btnCloseEditUserModal = document.getElementById("btnCloseEditUserModal");
+const btnCancelEditUser = document.getElementById("btnCancelEditUser");
+const editUserForm = document.getElementById("editUserForm");
+const editUserId = document.getElementById("editUserId");
+const editUsername = document.getElementById("editUsername");
+const editRole = document.getElementById("editRole");
+const editPassword = document.getElementById("editPassword");
+
 let authToken = localStorage.getItem("ta_admin_token") || "";
+let currentUser = null; // { id, username, role }
 
 // ── Auth Helpers ─────────────────────────────────────────────
 function getAuthHeaders() {
@@ -39,6 +77,12 @@ async function verifyAuth() {
       headers: getAuthHeaders(),
     });
     if (res.ok) {
+      const data = await res.json();
+      currentUser = {
+        id: data.id,
+        username: data.username,
+        role: data.role,
+      };
       showDashboard();
     } else {
       logout();
@@ -52,15 +96,52 @@ function showLogin() {
   loginSection.style.display = "block";
   dashboardSection.style.display = "none";
   btnLogout.style.display = "none";
+  userBadge.style.display = "none";
+  currentUser = null;
 }
 
 function showDashboard() {
   loginSection.style.display = "none";
   dashboardSection.style.display = "block";
   btnLogout.style.display = "flex";
+  userBadge.style.display = "inline-flex";
+
+  if (currentUser) {
+    navUsername.textContent = currentUser.username;
+    navRoleBadge.textContent = currentUser.role === "superadmin" ? "Super Admin" : "Admin";
+    navRoleBadge.className = `badge-role-pill ${currentUser.role === "superadmin" ? "badge-superadmin" : "badge-admin"}`;
+
+    // Tampilkan tab kelola admin jika Super Admin
+    if (currentUser.role === "superadmin") {
+      tabUsersBtn.style.display = "inline-flex";
+    } else {
+      tabUsersBtn.style.display = "none";
+      switchTab("docs");
+    }
+  }
+
   loadStats();
   loadDocuments();
 }
+
+// ── Tab Navigation ───────────────────────────────────────────
+function switchTab(tab) {
+  if (tab === "docs") {
+    tabDocsBtn.classList.add("active");
+    tabUsersBtn.classList.remove("active");
+    panelDocs.style.display = "block";
+    panelUsers.style.display = "none";
+  } else if (tab === "users") {
+    tabUsersBtn.classList.add("active");
+    tabDocsBtn.classList.remove("active");
+    panelUsers.style.display = "block";
+    panelDocs.style.display = "none";
+    loadAdminUsers();
+  }
+}
+
+tabDocsBtn.addEventListener("click", () => switchTab("docs"));
+tabUsersBtn.addEventListener("click", () => switchTab("users"));
 
 // ── Login Form ───────────────────────────────────────────────
 loginForm.addEventListener("submit", async (e) => {
@@ -83,9 +164,13 @@ loginForm.addEventListener("submit", async (e) => {
     if (res.ok && data.success) {
       authToken = data.token;
       localStorage.setItem("ta_admin_token", authToken);
+      currentUser = {
+        username: data.username,
+        role: data.role,
+      };
       passwordInput.value = "";
-      showToast("Berhasil masuk sebagai administrator.");
-      showDashboard();
+      showToast(`Berhasil masuk sebagai ${data.role === 'superadmin' ? 'Super Admin' : 'Admin'}.`);
+      verifyAuth();
     } else {
       showToast(data.detail || "Password atau username salah.");
     }
@@ -105,6 +190,7 @@ function logout() {
     }).catch(() => {});
   }
   authToken = "";
+  currentUser = null;
   localStorage.removeItem("ta_admin_token");
   showToast("Anda telah keluar.");
   showLogin();
@@ -112,7 +198,7 @@ function logout() {
 
 btnLogout.addEventListener("click", logout);
 
-// ── Stats & Documents ────────────────────────────────────────
+// ── Document Stats & List ────────────────────────────────────
 async function loadStats() {
   try {
     const res = await fetch("/api/admin/stats", { headers: getAuthHeaders() });
@@ -159,7 +245,6 @@ async function loadDocuments() {
     docs.forEach(doc => {
       const tr = document.createElement("tr");
 
-      // Format date
       let dateStr = doc.upload_date || "";
       try {
         const d = new Date(doc.upload_date);
@@ -181,7 +266,6 @@ async function loadDocuments() {
       docTableBody.appendChild(tr);
     });
 
-    // Attach delete listeners
     docTableBody.querySelectorAll(".btn-delete").forEach(btn => {
       btn.addEventListener("click", () => {
         const docId = btn.getAttribute("data-id");
@@ -268,7 +352,6 @@ async function uploadFile(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  // Smooth simulated progress while backend chunks & embeds
   let pct = 35;
   const progressTimer = setInterval(() => {
     if (pct < 85) {
@@ -310,6 +393,213 @@ async function uploadFile(file) {
     showToast("Error saat upload: " + err.message);
   } finally {
     fileInput.value = "";
+  }
+}
+
+// ── Super Admin: User Management CRUD ────────────────────────
+async function loadAdminUsers() {
+  if (!currentUser || currentUser.role !== "superadmin") return;
+
+  try {
+    const res = await fetch("/api/admin/users", { headers: getAuthHeaders() });
+    if (!res.ok) {
+      showToast("Gagal memuat daftar admin: Akses ditolak.");
+      return;
+    }
+    const data = await res.json();
+    const users = data.users || [];
+
+    // Hitung statistik user
+    statTotalUsers.textContent = users.length;
+    statTotalSuperAdmin.textContent = users.filter(u => u.role === "superadmin").length;
+    statTotalAdminRegular.textContent = users.filter(u => u.role === "admin").length;
+
+    userTableBody.innerHTML = "";
+    if (users.length === 0) {
+      userTableBody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center; color: var(--text-muted); padding: 32px;">
+            Belum ada akun admin terdaftar.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    users.forEach(user => {
+      const tr = document.createElement("tr");
+      const isSelf = currentUser.id === user.id;
+
+      const roleBadge = user.role === "superadmin"
+        ? `<span class="badge-role badge-superadmin">Super Admin</span>`
+        : `<span class="badge-role badge-admin">Admin</span>`;
+
+      tr.innerHTML = `
+        <td style="color: var(--text-muted); font-size: 0.8rem;">#${user.id}</td>
+        <td>
+          <strong>${escapeHtml(user.username)}</strong>
+          ${isSelf ? '<span style="font-size: 0.72rem; color: var(--accent-blue); margin-left: 6px;">(Akun Anda)</span>' : ''}
+        </td>
+        <td>${roleBadge}</td>
+        <td>${user.created_at || '-'}</td>
+        <td>
+          <button class="btn-edit" data-id="${user.id}" data-username="${escapeHtml(user.username)}" data-role="${user.role}">
+            Ubah
+          </button>
+          ${
+            isSelf
+              ? '<button class="btn-delete" disabled style="opacity: 0.4; cursor: not-allowed;">Hapus</button>'
+              : `<button class="btn-delete btn-delete-user" data-id="${user.id}" data-username="${escapeHtml(user.username)}">Hapus</button>`
+          }
+        </td>
+      `;
+      userTableBody.appendChild(tr);
+    });
+
+    // Attach listeners untuk Edit & Hapus
+    userTableBody.querySelectorAll(".btn-edit").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const username = btn.getAttribute("data-username");
+        const role = btn.getAttribute("data-role");
+        openEditModal(id, username, role);
+      });
+    });
+
+    userTableBody.querySelectorAll(".btn-delete-user").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const username = btn.getAttribute("data-username");
+        deleteUser(id, username);
+      });
+    });
+
+  } catch (err) {
+    userTableBody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center; color: var(--danger); padding: 20px;">
+          Error memuat pengguna: ${escapeHtml(err.message)}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+// Modal Tambah Admin
+btnOpenAddUserModal.addEventListener("click", () => {
+  addUserForm.reset();
+  addUserModal.style.display = "flex";
+});
+
+function closeAddModal() {
+  addUserModal.style.display = "none";
+  addUserForm.reset();
+}
+
+btnCloseAddUserModal.addEventListener("click", closeAddModal);
+btnCancelAddUser.addEventListener("click", closeAddModal);
+
+addUserForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = newUsername.value.trim();
+  const password = newPassword.value;
+  const role = newRole.value;
+
+  try {
+    const res = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ username, password, role }),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Sukses: Akun '${username}' (${role}) berhasil ditambahkan.`);
+      closeAddModal();
+      loadAdminUsers();
+    } else {
+      showToast(data.detail || "Gagal membuat akun admin.");
+    }
+  } catch (err) {
+    showToast("Error: " + err.message);
+  }
+});
+
+// Modal Edit Admin
+function openEditModal(id, username, role) {
+  editUserId.value = id;
+  editUsername.value = username;
+  editRole.value = role;
+  editPassword.value = "";
+  editUserModal.style.display = "flex";
+}
+
+function closeEditModal() {
+  editUserModal.style.display = "none";
+  editUserForm.reset();
+}
+
+btnCloseEditUserModal.addEventListener("click", closeEditModal);
+btnCancelEditUser.addEventListener("click", closeEditModal);
+
+editUserForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = editUserId.value;
+  const role = editRole.value;
+  const password = editPassword.value.trim();
+
+  const payload = { role };
+  if (password) {
+    payload.password = password;
+  }
+
+  try {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      showToast("Data akun admin berhasil diperbarui.");
+      closeEditModal();
+      loadAdminUsers();
+    } else {
+      showToast(data.detail || "Gagal memperbarui akun.");
+    }
+  } catch (err) {
+    showToast("Error: " + err.message);
+  }
+});
+
+// Hapus Admin
+async function deleteUser(id, username) {
+  if (!confirm(`Yakin ingin menghapus akun admin "${username}"? Akun ini tidak akan dapat login lagi.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Akun "${username}" berhasil dihapus.`);
+      loadAdminUsers();
+    } else {
+      showToast(data.detail || "Gagal menghapus akun.");
+    }
+  } catch (err) {
+    showToast("Error: " + err.message);
   }
 }
 

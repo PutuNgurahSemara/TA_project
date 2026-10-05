@@ -1,71 +1,84 @@
 """
-auth.py — Autentikasi admin untuk REST API backend.
+auth.py — Autentikasi multi-admin dan manajemen sesi untuk REST API backend.
 
 Mekanisme:
-  - Username & bcrypt hash password disimpan di .env
-  - Login memverifikasi plaintext vs hash menggunakan bcrypt
-  - Status login dikelola via token sesi in-memory untuk REST API
+  - Data akun admin disimpan di SQLite (tabel `admins`)
+  - Login memverifikasi plaintext password vs bcrypt hash
+  - Status sesi dikelola via in-memory token mapping ke data akun (id, username, role)
 """
 
-import bcrypt
 import secrets
-from config import ADMIN_USERNAME, ADMIN_PASSWORD_HASH
+from typing import Any, Optional
+import bcrypt
+from db.database import get_admin_by_username
 
 
-# ── Verification ──────────────────────────────────────────────────────────────
+# ── In-Memory Token Session Mapping ──────────────────────────────────────────
+# Format: { token: { "id": int, "username": str, "role": str } }
+_ACTIVE_SESSIONS: dict[str, dict[str, Any]] = {}
 
-def _check_password(plain_password: str) -> bool:
-    """Verifikasi plaintext password terhadap hash bcrypt di .env."""
-    if not ADMIN_PASSWORD_HASH:
-        # Belum di-setup → tolak semua login, tampilkan pesan
-        return False
+
+def verify_admin_credentials(username: str, password: str) -> Optional[dict[str, Any]]:
+    """
+    Verifikasi username & password admin dari database SQLite.
+    Mengembalikan data profil admin jika valid, atau None jika gagal.
+    """
+    if not username or not password:
+        return None
+
+    admin = get_admin_by_username(username.strip())
+    if not admin:
+        return None
+
     try:
-        return bcrypt.checkpw(
-            plain_password.encode("utf-8"),
-            ADMIN_PASSWORD_HASH.encode("utf-8"),
+        is_valid = bcrypt.checkpw(
+            password.encode("utf-8"),
+            admin["password_hash"].encode("utf-8"),
         )
+        if is_valid:
+            return {
+                "id": admin["id"],
+                "username": admin["username"],
+                "role": admin["role"],
+            }
     except Exception:
-        return False
+        return None
+
+    return None
 
 
-# ── In-Memory Token Session (untuk REST API) ──────────────────────────────────
-_ACTIVE_TOKENS: set[str] = set()
-
-
-def create_session_token() -> str:
-    """Generate secure random token untuk sesi admin aktif."""
+def create_session_token(user_data: dict[str, Any]) -> str:
+    """Generate secure token dan simpan data sesi user."""
     token = secrets.token_hex(24)
-    _ACTIVE_TOKENS.add(token)
+    _ACTIVE_SESSIONS[token] = {
+        "id": user_data["id"],
+        "username": user_data["username"],
+        "role": user_data["role"],
+    }
     return token
 
 
+def get_session_user(token: str) -> Optional[dict[str, Any]]:
+    """Ambil data user dari token sesi aktif."""
+    if not token:
+        return None
+    return _ACTIVE_SESSIONS.get(token)
+
+
 def verify_session_token(token: str) -> bool:
-    """Verifikasi apakah token sesi valid."""
-    return bool(token and token in _ACTIVE_TOKENS)
+    """Cek apakah token sesi valid."""
+    return bool(token and token in _ACTIVE_SESSIONS)
 
 
 def revoke_session_token(token: str) -> None:
     """Hapus token sesi saat logout."""
-    _ACTIVE_TOKENS.discard(token)
+    _ACTIVE_SESSIONS.pop(token, None)
 
 
-def verify_admin_credentials(username: str, password: str) -> bool:
-    """Verifikasi kombinasi username dan password admin."""
-    return username.strip() == ADMIN_USERNAME and _check_password(password)
-
-
-def is_password_configured() -> bool:
-    """Cek apakah password hash sudah di-set di .env."""
-    return bool(ADMIN_PASSWORD_HASH)
-
-
-# ── Setup Utility ─────────────────────────────────────────────────────────────
+# ── Password Utilities ───────────────────────────────────────────────────────
 
 def generate_hash(password: str) -> str:
-    """
-    Generate bcrypt hash dari plaintext password.
-    Digunakan oleh setup_admin.py.
-    """
+    """Generate bcrypt hash dari plaintext password."""
     return bcrypt.hashpw(
         password.encode("utf-8"), bcrypt.gensalt()
     ).decode("utf-8")
