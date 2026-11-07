@@ -12,8 +12,13 @@ from fastapi import Request
 def get_client_ip(request: Request) -> str:
     """
     Mengambil IP asli klien.
-    Jika di belakang Cloudflare Tunnel, ambil dari 'cf-connecting-ip' atau 'x-forwarded-for'.
+    Header proxy hanya dipercaya jika koneksi datang dari localhost (cloudflared
+    berjalan di mesin yang sama); klien langsung bisa memalsukan header tersebut.
     """
+    peer = request.client.host if request.client and request.client.host else "127.0.0.1"
+    if peer not in TRUSTED_PROXIES:
+        return peer
+
     cf_ip = request.headers.get("cf-connecting-ip")
     if cf_ip:
         return cf_ip.strip()
@@ -22,10 +27,10 @@ def get_client_ip(request: Request) -> str:
     if x_forwarded:
         return x_forwarded.split(",")[0].strip()
 
-    if request.client and request.client.host:
-        return request.client.host
+    return peer
 
-    return "127.0.0.1"
+
+TRUSTED_PROXIES = {"127.0.0.1", "::1"}
 
 
 class InMemoryRateLimiter:
@@ -45,11 +50,13 @@ class InMemoryRateLimiter:
             (allowed: bool, retry_after_seconds: int)
         """
         now = time.time()
-        timestamps = self.records[key]
-
-        # Bersihkan timestamp di luar jendela waktu
         cutoff = now - self.window_seconds
-        valid_timestamps = [t for t in timestamps if t > cutoff]
+
+        # Buang key yang sudah kedaluwarsa agar memori tidak terus membengkak
+        for k in [k for k, ts in self.records.items() if not ts or ts[-1] <= cutoff]:
+            del self.records[k]
+
+        valid_timestamps = [t for t in self.records.get(key, []) if t > cutoff]
         self.records[key] = valid_timestamps
 
         if len(valid_timestamps) >= self.requests_limit:

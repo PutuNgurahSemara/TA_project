@@ -4,6 +4,13 @@ main.py — Entry point utama untuk menjalankan Chatbot RAG Server (FastAPI + Uv
 
 import uvicorn
 
+import config
+
 if __name__ == "__main__":
-    print("🚀 Memulai Chatbot RAG Server di http://localhost:8000 ...")
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    print(f"🚀 Memulai Chatbot RAG Server di http://{config.SERVER_HOST}:{config.SERVER_PORT} ...")
+    uvicorn.run(
+        "backend.main:app",
+        host=config.SERVER_HOST,
+        port=config.SERVER_PORT,
+        reload=config.DEV_RELOAD,
+    )
