@@ -157,7 +157,7 @@ function usePrompt(text) {
 // ── Health Check & Access Key Checking ────────────────────────
 async function checkHealth() {
   try {
-    const res = await fetch("/api/health");
+    const res = await fetch(API_BASE + "/api/health");
     if (!res.ok) throw new Error();
     const data = await res.json();
     const dot = statusIndicator.querySelector(".status-dot");
@@ -348,7 +348,7 @@ async function sendMessage() {
 
   try {
     const accessKey = localStorage.getItem("chat_access_key") || "";
-    const res = await fetch("/api/chat", {
+    const res = await fetch(API_BASE + "/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

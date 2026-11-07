@@ -61,6 +61,8 @@ def ingest_document(
     pages = parse_document(file_path)
     if not pages:
         raise ValueError("Dokumen tidak mengandung teks yang bisa diekstrak.")
+    for page in pages:
+        page["source"] = doc_name  # file di disk bernama <uuid>.<ext>; tampilkan nama asli
 
     # Step 2: Chunk
     _update(f"✂️ Memecah teks ({len(pages)} halaman) menjadi chunks...", 0.20)

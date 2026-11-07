@@ -18,7 +18,7 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, Uplo
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import config
 from auth import (
@@ -72,8 +72,8 @@ login_limiter = InMemoryRateLimiter(
 # CORS Middleware (mendukung jika frontend dibuka dari origin berbeda)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=config.ALLOWED_ORIGINS,
+    allow_credentials=False,  # auth memakai header Bearer, bukan cookie
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -92,6 +92,7 @@ async def add_cache_control_headers(request: Request, call_next):
 
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 
 # ── Dependency: Admin Auth ───────────────────────────────────────────────────
@@ -135,7 +136,7 @@ def require_superadmin(user: dict = Depends(require_admin)) -> dict:
 
 class ChatRequest(BaseModel):
     question: str
-    top_k: Optional[int] = config.TOP_K
+    top_k: Optional[int] = Field(config.TOP_K, ge=1, le=20)
 
 
 class LoginRequest(BaseModel):
@@ -399,14 +400,15 @@ def list_documents(_: dict = Depends(require_admin)):
 
 
 @app.post("/api/admin/upload")
-async def upload_document(
+def upload_document(
     file: UploadFile = File(...),
     _: dict = Depends(require_admin),
 ):
     """
     Upload dokumen (PDF, DOCX, TXT) dan jalankan pipeline ingest RAG.
     """
-    filename = file.filename
+    # Buang komponen direktori (mis. "../../x.pdf") dari nama kiriman klien
+    filename = Path((file.filename or "").replace("\\", "/")).name
     ext = Path(filename).suffix.lower()
     if ext not in [".pdf", ".docx", ".txt"]:
         raise HTTPException(
@@ -417,12 +419,17 @@ async def upload_document(
     # Simpan file ke direktori uploaded_docs
     os.makedirs(config.DOCS_DIR, exist_ok=True)
     doc_id = str(uuid.uuid4())
-    save_filename = f"{doc_id}_{filename}"
-    file_path = os.path.join(config.DOCS_DIR, save_filename)
+    file_path = os.path.join(config.DOCS_DIR, f"{doc_id}{ext}")
 
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        if os.path.getsize(file_path) > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Ukuran file melebihi batas {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.",
+            )
 
         # Jalankan ingest dokumen
         chunk_count = ingest_document(
@@ -445,6 +452,8 @@ async def upload_document(
                 os.remove(file_path)
             except OSError:
                 pass
+        if isinstance(e, HTTPException):
+            raise
         raise HTTPException(status_code=500, detail=f"Gagal memproses dokumen: {str(e)}")
 
 
