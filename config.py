@@ -14,7 +14,7 @@ load_dotenv(BASE_DIR / ".env")
 
 # ── Ollama ──────────────────────────────────────────────────
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-LLM_MODEL: str      = os.getenv("LLM_MODEL", "qwen3.5:9b")
+LLM_MODEL: str      = os.getenv("LLM_MODEL", "qwen2.5:3b")
 EMBED_MODEL: str    = os.getenv("EMBED_MODEL", "bge-m3")
 
 # ── RAG Parameters ──────────────────────────────────────────
@@ -35,4 +35,11 @@ ADMIN_PASSWORD_HASH: str = os.getenv("ADMIN_PASSWORD_HASH", "")
 # ── Security & Access Protection ─────────────────────────────
 CHAT_ACCESS_KEY: str = os.getenv("CHAT_ACCESS_KEY", "").strip()
 RATE_LIMIT_CHAT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_CHAT_PER_MINUTE", "10"))
+
+# ── Deployment ───────────────────────────────────────────────
+# Daftar origin frontend dipisah koma, mis. "https://ta.vercel.app". Kosong = semua origin.
+ALLOWED_ORIGINS: list[str] = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()] or ["*"]
+SERVER_HOST: str = os.getenv("SERVER_HOST", "127.0.0.1")
+SERVER_PORT: int = int(os.getenv("SERVER_PORT", "8000"))
+DEV_RELOAD: bool = os.getenv("DEV_RELOAD", "false").lower() == "true"
 

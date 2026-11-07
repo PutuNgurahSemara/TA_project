@@ -73,7 +73,7 @@ async function verifyAuth() {
     return;
   }
   try {
-    const res = await fetch("/api/admin/check-session", {
+    const res = await fetch(API_BASE + "/api/admin/check-session", {
       headers: getAuthHeaders(),
     });
     if (res.ok) {
@@ -154,7 +154,7 @@ loginForm.addEventListener("submit", async (e) => {
   btn.textContent = "Memverifikasi...";
 
   try {
-    const res = await fetch("/api/admin/login", {
+    const res = await fetch(API_BASE + "/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -184,7 +184,7 @@ loginForm.addEventListener("submit", async (e) => {
 
 function logout() {
   if (authToken) {
-    fetch("/api/admin/logout", {
+    fetch(API_BASE + "/api/admin/logout", {
       method: "POST",
       headers: getAuthHeaders(),
     }).catch(() => {});
@@ -201,13 +201,13 @@ btnLogout.addEventListener("click", logout);
 // ── Document Stats & List ────────────────────────────────────
 async function loadStats() {
   try {
-    const res = await fetch("/api/admin/stats", { headers: getAuthHeaders() });
+    const res = await fetch(API_BASE + "/api/admin/stats", { headers: getAuthHeaders() });
     if (res.ok) {
       const data = await res.json();
       statDocCount.textContent = data.document_count || 0;
       statChunkCount.textContent = (data.total_chunks || 0).toLocaleString();
     }
-    const healthRes = await fetch("/api/health");
+    const healthRes = await fetch(API_BASE + "/api/health");
     if (healthRes.ok) {
       const healthData = await healthRes.json();
       const el = document.getElementById("statEmbedModel");
@@ -222,7 +222,7 @@ async function loadStats() {
 
 async function loadDocuments() {
   try {
-    const res = await fetch("/api/admin/documents", { headers: getAuthHeaders() });
+    const res = await fetch(API_BASE + "/api/admin/documents", { headers: getAuthHeaders() });
     if (!res.ok) {
       if (res.status === 401) logout();
       return;
@@ -291,7 +291,7 @@ async function deleteDoc(docId, docName) {
   }
 
   try {
-    const res = await fetch(`/api/admin/documents/${docId}`, {
+    const res = await fetch(`${API_BASE}/api/admin/documents/${docId}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
@@ -363,7 +363,7 @@ async function uploadFile(file) {
   }, 400);
 
   try {
-    const res = await fetch("/api/admin/upload", {
+    const res = await fetch(API_BASE + "/api/admin/upload", {
       method: "POST",
       headers: getAuthHeaders(),
       body: formData,
@@ -401,7 +401,7 @@ async function loadAdminUsers() {
   if (!currentUser || currentUser.role !== "superadmin") return;
 
   try {
-    const res = await fetch("/api/admin/users", { headers: getAuthHeaders() });
+    const res = await fetch(API_BASE + "/api/admin/users", { headers: getAuthHeaders() });
     if (!res.ok) {
       showToast("Gagal memuat daftar admin: Akses ditolak.");
       return;
@@ -506,7 +506,7 @@ addUserForm.addEventListener("submit", async (e) => {
   const role = newRole.value;
 
   try {
-    const res = await fetch("/api/admin/users", {
+    const res = await fetch(API_BASE + "/api/admin/users", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -557,7 +557,7 @@ editUserForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    const res = await fetch(`/api/admin/users/${id}`, {
+    const res = await fetch(`${API_BASE}/api/admin/users/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -586,7 +586,7 @@ async function deleteUser(id, username) {
   }
 
   try {
-    const res = await fetch(`/api/admin/users/${id}`, {
+    const res = await fetch(`${API_BASE}/api/admin/users/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
