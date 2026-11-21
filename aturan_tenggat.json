@@ -1,0 +1,36 @@
+{
+  "hari_libur": [],
+  "kegiatan": {
+    "TA": {
+      "sidang_ta": {
+        "nama": "Sidang Tugas Akhir",
+        "acuan": "tanggal seminar proposal",
+        "paling_cepat": {"jumlah": 14, "satuan": "minggu"},
+        "paling_lambat": {"jumlah": 45, "satuan": "minggu"},
+        "sumber": "Panduan TA Program Studi Sistem Informasi 2026"
+      },
+      "revisi_proposal": {
+        "nama": "Revisi proposal TA",
+        "acuan": "tanggal seminar proposal",
+        "paling_lambat": {"jumlah": 20, "satuan": "hari_kerja"},
+        "sumber": "Panduan TA Program Studi Sistem Informasi 2026"
+      }
+    },
+    "KP": {
+      "revisi_laporan": {
+        "nama": "Revisi laporan KP",
+        "acuan": "tanggal seminar hasil KP",
+        "paling_lambat": {"jumlah": 3, "satuan": "minggu"},
+        "sumber": "Panduan Kerja Praktik ITK 2025"
+      }
+    },
+    "Magang": {
+      "laporan_magang": {
+        "nama": "Laporan magang",
+        "acuan": "tanggal seminar hasil magang",
+        "paling_lambat": {"jumlah": 2, "satuan": "minggu"},
+        "sumber": "Panduan Magang Keprofesian ITK 2025"
+      }
+    }
+  }
+}

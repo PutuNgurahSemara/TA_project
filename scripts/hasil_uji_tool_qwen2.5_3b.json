@@ -1,0 +1,194 @@
+{
+  "ringkasan": {
+    "model": "qwen2.5:3b",
+    "ketepatan_tool_longgar": "6/10",
+    "ketepatan_tool_ketat": "6/10",
+    "ketepatan_kategori": "1/4",
+    "rata_latensi_ms": 3661
+  },
+  "hasil": [
+    {
+      "no": 1,
+      "pertanyaan": "Apa saja syarat untuk mendaftar kerja praktik?",
+      "tool_diharapkan": "retrieve_dokumen",
+      "tool_dipanggil": [],
+      "argumen_tool": [],
+      "tool_benar": false,
+      "tool_benar_ketat": false,
+      "kategori_benar": false,
+      "guard_aktif": false,
+      "latensi_ms": 9150,
+      "jawaban": "Maaf, saya hanya dapat menjawab pertanyaan seputar Tugas Akhir, Kerja Praktik, dan Magang berdasarkan dokumen pedoman yang tersedia."
+    },
+    {
+      "no": 2,
+      "pertanyaan": "Bagaimana struktur proposal tugas akhir?",
+      "tool_diharapkan": "retrieve_dokumen",
+      "tool_dipanggil": [],
+      "argumen_tool": [],
+      "tool_benar": false,
+      "tool_benar_ketat": false,
+      "kategori_benar": false,
+      "guard_aktif": true,
+      "latensi_ms": 1024,
+      "jawaban": "Maaf, saya hanya dapat menjawab pertanyaan seputar Tugas Akhir, Kerja Praktik, dan Magang berdasarkan dokumen pedoman yang tersedia."
+    },
+    {
+      "no": 3,
+      "pertanyaan": "Bagaimana prosedur pendaftaran magang keprofesian?",
+      "tool_diharapkan": "retrieve_dokumen",
+      "tool_dipanggil": [],
+      "argumen_tool": [],
+      "tool_benar": false,
+      "tool_benar_ketat": false,
+      "kategori_benar": false,
+      "guard_aktif": false,
+      "latensi_ms": 1186,
+      "jawaban": "Maaf, saya hanya dapat menjawab pertanyaan seputar Tugas Akhir, Kerja Praktik, dan Magang berdasarkan dokumen pedoman yang tersedia."
+    },
+    {
+      "no": 4,
+      "pertanyaan": "Apa saja komponen penilaian kerja praktik?",
+      "tool_diharapkan": "retrieve_dokumen",
+      "tool_dipanggil": [
+        "retrieve_dokumen"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "retrieve_dokumen",
+          "argumen": {
+            "kategori": "KP",
+            "query": "komponen penilaian"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": true,
+      "guard_aktif": false,
+      "latensi_ms": 17114,
+      "jawaban": "Komponen penilaian kerja praktik (KP) mencakup:\n\n1. Penilaian seminar KP\n2. Penilaian pembimbing lapangan\n3. Penilaian pembimbing akademik\n4. Penilaian laporan dan Poster KP\n\nInformasi ini diambil dari dokumen [2025] A PANDUAN KERJA PRAKTIK ITK.pdf, halaman 36."
+    },
+    {
+      "no": 5,
+      "pertanyaan": "Seminar proposal TA saya tanggal 2026-03-02. Kapan paling cepat saya boleh sidang TA?",
+      "tool_diharapkan": "cek_tenggat",
+      "tool_dipanggil": [
+        "cek_tenggat"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "cek_tenggat",
+          "argumen": {
+            "id_tahapan": "sidang_ta",
+            "tanggal_acuan": "2026-03-02",
+            "kegiatan": "TA"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 2054,
+      "jawaban": "**Sidang Tugas Akhir** (TA)\n- Tanggal acuan: 2026-03-02\n- Paling cepat: 2026-06-08\n- Paling lambat: 2027-01-11\n- Status: dalam rentang yang diperbolehkan\n- Sumber: Panduan TA Program Studi Sistem Informasi 2026\n\n_Hasil ini merupakan pemeriksaan mandiri berdasarkan pedoman, bukan keputusan resmi program studi._"
+    },
+    {
+      "no": 6,
+      "pertanyaan": "Seminar hasil KP saya tanggal 20 Oktober 2026, kapan batas revisi laporan KP?",
+      "tool_diharapkan": "cek_tenggat",
+      "tool_dipanggil": [
+        "cek_tenggat"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "cek_tenggat",
+          "argumen": {
+            "kegiatan": "KP",
+            "id_tahapan": "revisi_laporan",
+            "tanggal_acuan": "2026-10-20"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 1686,
+      "jawaban": "**Revisi laporan KP** (KP)\n- Tanggal acuan: 2026-10-20\n- Tenggat: 2026-11-10\n- Sisa hari: -11\n- Status: sudah lewat\n- Sumber: Panduan Kerja Praktik ITK 2025\n\n_Hasil ini merupakan pemeriksaan mandiri berdasarkan pedoman, bukan keputusan resmi program studi._"
+    },
+    {
+      "no": 7,
+      "pertanyaan": "Saya seminar proposal tanggal 5 Januari 2026, kapan batas revisi proposal saya?",
+      "tool_diharapkan": "cek_tenggat",
+      "tool_dipanggil": [
+        "cek_tenggat"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "cek_tenggat",
+          "argumen": {
+            "kegiatan": "TA",
+            "id_tahapan": "revisi_proposal",
+            "tanggal_acuan": "2026-01-05"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 2319,
+      "jawaban": "**Revisi proposal TA** (TA)\n- Tanggal acuan: 2026-01-05\n- Tenggat: 2026-02-02\n- Sisa hari: -292\n- Status: sudah lewat\n- Sumber: Panduan TA Program Studi Sistem Informasi 2026\n\n_Hasil ini merupakan pemeriksaan mandiri berdasarkan pedoman, bukan keputusan resmi program studi._"
+    },
+    {
+      "no": 8,
+      "pertanyaan": "Kapan batas pengumpulan laporan magang saya?",
+      "tool_diharapkan": null,
+      "tool_dipanggil": [
+        "cek_tenggat"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "cek_tenggat",
+          "argumen": {
+            "kegiatan": "Magang",
+            "id_tahapan": "laporan_magang"
+          }
+        }
+      ],
+      "tool_benar": false,
+      "tool_benar_ketat": false,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 1085,
+      "jawaban": "Tentu saja, saya belum mendapatkan tanggal acuan dari Anda. Bisa Anda berikan tanggal acuan untuk laporan magang Anda?"
+    },
+    {
+      "no": 9,
+      "pertanyaan": "Halo, selamat pagi!",
+      "tool_diharapkan": null,
+      "tool_dipanggil": [],
+      "argumen_tool": [],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 369,
+      "jawaban": "Halo! Selamat pagi juga kepada Anda. Bagaimana saya bisa membantu Anda hari ini?"
+    },
+    {
+      "no": 10,
+      "pertanyaan": "Siapa presiden Indonesia saat ini?",
+      "tool_diharapkan": null,
+      "tool_dipanggil": [],
+      "argumen_tool": [],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 625,
+      "jawaban": "Maaf, saya hanya dapat menjawab pertanyaan seputar Tugas Akhir, Kerja Praktik, dan Magang berdasarkan dokumen pedoman yang tersedia."
+    }
+  ]
+}

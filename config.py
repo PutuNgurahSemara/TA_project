@@ -21,6 +21,19 @@ EMBED_MODEL: str    = os.getenv("EMBED_MODEL", "bge-m3")
 CHUNK_SIZE: int    = int(os.getenv("CHUNK_SIZE", "600"))
 CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "100"))
 TOP_K: int         = int(os.getenv("TOP_K", "5"))
+# Jarak cosine maksimum (ChromaDB: makin kecil makin relevan). Potongan di atas ambang dibuang.
+RELEVANCE_MAX_DISTANCE: float = float(os.getenv("RELEVANCE_MAX_DISTANCE", "0.50"))
+
+# ── Mode Retrieval ───────────────────────────────────────────
+# "linier"  : retrieve-then-generate (baseline), retrieval selalu dijalankan.
+# "agentic" : LLM memilih tool (retrieve_dokumen, cek_tenggat).
+RETRIEVAL_MODE: str = os.getenv("RETRIEVAL_MODE", "linier").strip().lower()
+if RETRIEVAL_MODE not in ("linier", "agentic"):
+    raise ValueError(f"RETRIEVAL_MODE harus 'linier' atau 'agentic', bukan '{RETRIEVAL_MODE}'.")
+
+# ── Log Evaluasi ─────────────────────────────────────────────
+# Jika True, setiap pertanyaan dicatat ke tabel SQLite `eval_log` (tanpa teks pertanyaan/data mahasiswa).
+EVAL_LOGGING: bool = os.getenv("EVAL_LOGGING", "false").lower() == "true"
 
 # ── Paths ────────────────────────────────────────────────────
 CHROMA_DIR:  str = str(BASE_DIR / "chroma_db")

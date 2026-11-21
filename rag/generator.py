@@ -10,21 +10,28 @@ Mendukung:
 
 from typing import Any, Generator, Optional
 from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from config import OLLAMA_BASE_URL, LLM_MODEL
 
 # ── System Prompt ─────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """Kamu adalah asisten AI yang membantu menjawab pertanyaan berdasarkan dokumen internal.
+PENOLAKAN_STANDAR = (
+    "Maaf, saya hanya dapat menjawab pertanyaan seputar Tugas Akhir, Kerja Praktik, "
+    "dan Magang berdasarkan dokumen pedoman yang tersedia."
+)
+TIDAK_DITEMUKAN = "Maaf, informasi tersebut tidak ditemukan dalam dokumen yang tersedia."
+
+SYSTEM_PROMPT = f"""Kamu adalah asisten AI yang menjawab pertanyaan mahasiswa tentang Tugas Akhir (TA), Kerja Praktik (KP), dan Magang berdasarkan dokumen pedoman.
 
 ATURAN WAJIB:
-1. Jawab HANYA berdasarkan informasi yang ada dalam konteks dokumen di bawah.
-2. Jika informasi tidak ditemukan dalam konteks, katakan dengan jelas:
-   "Maaf, informasi tersebut tidak ditemukan dalam dokumen yang tersedia."
-3. JANGAN mengarang, menambah, atau mengasumsikan informasi di luar konteks.
-4. Jawab dalam Bahasa Indonesia yang jelas, ringkas, dan profesional.
-5. Jika menyebutkan daftar jenis, kategori, klasifikasi, atau poin-poin, SELALU gunakan format bullet list markdown (- ...) atau nomor (1., 2., ...) secara konsisten untuk setiap item agar terstruktur rapi.
+1. Jawab HANYA berdasarkan informasi yang ada dalam konteks dokumen yang diberikan.
+2. Jika informasi tidak ditemukan dalam konteks, jawab persis: "{TIDAK_DITEMUKAN}"
+3. Jika pertanyaan di luar cakupan TA, KP, dan Magang, jawab persis: "{PENOLAKAN_STANDAR}"
+4. JANGAN mengarang, menambah, atau mengasumsikan informasi di luar konteks.
+5. Sertakan nama dokumen dan kutipan singkat sumber pada jawaban, contoh: (Sumber: <nama dokumen>, hal. <n>: "<kutipan>").
+6. Jawab dalam Bahasa Indonesia yang jelas, ringkas, dan profesional.
+7. Jika menyebutkan daftar jenis, kategori, klasifikasi, atau poin-poin, SELALU gunakan format bullet list markdown (- ...) atau nomor (1., 2., ...) secara konsisten untuk setiap item agar terstruktur rapi.
 """
 
 _llm: Optional[ChatOllama] = None
@@ -52,13 +59,13 @@ def format_chunks_context(chunks: list[dict[str, Any]]) -> str:
     Format list chunk menjadi string konteks terstruktur.
     """
     if not chunks:
-        return "Tidak ada dokumen yang tersedia dalam basis data."
+        return "Tidak ada potongan dokumen yang relevan (tidak ditemukan di dokumen)."
 
     parts = []
     for i, chunk in enumerate(chunks, 1):
         parts.append(
-            f"[Dokumen {i} | File: {chunk.get('source', 'Unknown')} | Hal. {chunk.get('page_num', 1)}]\n"
-            f"{chunk.get('text', '')}"
+            f"[Dokumen {i} | File: {chunk.get('nama_dokumen', 'Unknown')} | Hal. {chunk.get('halaman') or '-'}]\n"
+            f"{chunk.get('kutipan', '')}"
         )
     return "\n\n---\n\n".join(parts)
 
@@ -91,9 +98,18 @@ def get_rag_chain():
     return prompt | llm | StrOutputParser()
 
 
+def riwayat_ke_messages(riwayat: Optional[list[dict[str, str]]]) -> list:
+    """Ubah riwayat sesi [{peran: "user"|"asisten", isi}] menjadi pesan LangChain."""
+    return [
+        HumanMessage(content=r["isi"]) if r["peran"] == "user" else AIMessage(content=r["isi"])
+        for r in (riwayat or [])
+    ]
+
+
 def generate_answer_stream(
     question: str,
     chunks: list[dict[str, Any]],
+    riwayat: Optional[list[dict[str, str]]] = None,
 ) -> Generator[str, None, None]:
     """
     Panggil LLM Ollama via LangChain secara streaming, yield token jawaban satu per satu.
@@ -105,6 +121,7 @@ def generate_answer_stream(
     user_content = build_prompt(question, chunks)
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
+        *riwayat_ke_messages(riwayat),
         HumanMessage(content=user_content),
     ]
 

@@ -10,9 +10,10 @@ Menyediakan:
 import json
 import os
 import shutil
+import time
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +30,7 @@ from auth import (
     generate_hash,
 )
 from db.database import (
+    add_eval_log,
     delete_document_record,
     get_all_documents,
     get_document,
@@ -134,9 +136,18 @@ def require_superadmin(user: dict = Depends(require_admin)) -> dict:
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
 
+class PesanRiwayat(BaseModel):
+    peran: Literal["user", "asisten"]
+    isi: str = Field(max_length=4000)
+
+
 class ChatRequest(BaseModel):
     question: str
     top_k: Optional[int] = Field(config.TOP_K, ge=1, le=20)
+    # Id pertanyaan uji untuk log evaluasi (opsional, tidak dikirim oleh frontend biasa)
+    id_pertanyaan: Optional[str] = Field(None, max_length=100)
+    # Riwayat percakapan sesi ini saja (dari memori tab browser); tidak pernah disimpan
+    riwayat: list[PesanRiwayat] = Field(default_factory=list, max_length=6)
 
 
 class LoginRequest(BaseModel):
@@ -196,6 +207,7 @@ def chat_stream(req: ChatRequest, request: Request):
     Streaming response RAG menggunakan Server-Sent Events (SSE).
     Dilengkapi Rate Limiting dan proteksi Access Key opsional.
     """
+    waktu_mulai = time.perf_counter()
     client_ip = get_client_ip(request)
 
     # 1. Rate Limiting Protection (Anti-Spam / Anti-Overload)
@@ -226,7 +238,11 @@ def chat_stream(req: ChatRequest, request: Request):
             status_init = json.dumps({"stage": "retrieving", "message": "Mencari konteks di database..."})
             yield f"event: status\ndata: {status_init}\n\n"
 
-            rag_res = query_rag(question, top_k=req.top_k or config.TOP_K)
+            rag_res = query_rag(
+                question,
+                top_k=req.top_k or config.TOP_K,
+                riwayat=[r.model_dump() for r in req.riwayat],
+            )
             sources = rag_res.get("sources", [])
             chunks_found = rag_res.get("chunks_found", 0)
 
@@ -250,6 +266,17 @@ def chat_stream(req: ChatRequest, request: Request):
                 token_count += 1
                 token_payload = json.dumps({"token": token})
                 yield f"event: token\ndata: {token_payload}\n\n"
+
+            # Dicatat sebelum "done": klien bisa menutup koneksi tepat setelah menerimanya
+            if config.EVAL_LOGGING:
+                add_eval_log(
+                    id_pertanyaan=req.id_pertanyaan,
+                    mode=rag_res["mode"],
+                    tool_dipanggil=rag_res["tool_dipanggil"],
+                    hasil_retrieval=rag_res["hasil_retrieval"],
+                    latensi_ms=round((time.perf_counter() - waktu_mulai) * 1000),
+                    guard_aktif=rag_res["guard_aktif"],
+                )
 
             # Kirim sinyal selesai
             done_payload = json.dumps({"token_count": token_count})

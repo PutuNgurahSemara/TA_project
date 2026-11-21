@@ -33,3 +33,7 @@ bcrypt>=4.2.1
 # Utilities
 python-dotenv>=1.0.1
 requests>=2.32.0
+tzdata>=2025.2  # database zona waktu untuk zoneinfo (Asia/Makassar) di Windows
+
+# Testing
+pytest>=8.0

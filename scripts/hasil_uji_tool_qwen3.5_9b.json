@@ -1,0 +1,238 @@
+{
+  "ringkasan": {
+    "model": "qwen3.5:9b",
+    "ketepatan_tool_longgar": "10/10",
+    "ketepatan_tool_ketat": "7/10",
+    "ketepatan_kategori": "4/4",
+    "rata_latensi_ms": 44421
+  },
+  "hasil": [
+    {
+      "no": 1,
+      "pertanyaan": "Apa saja syarat untuk mendaftar kerja praktik?",
+      "tool_diharapkan": "retrieve_dokumen",
+      "tool_dipanggil": [
+        "retrieve_dokumen"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "retrieve_dokumen",
+          "argumen": {
+            "query": "syarat mendaftar kerja praktik",
+            "kategori": "KP"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": true,
+      "guard_aktif": false,
+      "latensi_ms": 103868,
+      "jawaban": "Berdasarkan dokumen pedoman, berikut adalah syarat untuk mendaftar Kerja Praktik (KP):\n\n**Syarat Umum:**\n1. Peserta KP harus merupakan mahasiswa aktif Institut Teknologi Kalimantan yang tercatat di PD Dikti.\n2. Jumlah SKS lulus mahasiswa minimal 72 SKS.\n3. Telah memahami panduan pembelajaran di luar program studi yang berlaku dan berkomitmen mengikuti peraturan kegiatan konversi KP.\n4. Tidak melakukan hal-hal yang melanggar kode etik sebagai mahasiswa aktif yang berdampak terhadap penyelesaian kegiatan pembelajaran di luar program studi.\n\n**Syarat Pendaftaran:**\n1. Koordinator Program Studi menentukan Dosen Pembimbing KP dan mengajukan nama Dosen Pembimbing KP ke Fakultas untuk disahkan.\n2. Calon peserta KP mengajukan Pendaftaran KP ke Administrasi Akademik Fakultas dengan membawa:\n   - Form Pendaftaran KP yang telah diisi (Form. KP-001)\n   - Surat persetujuan KP dari mitra.\n\n**Tahapan Awal:**\n- Penyusunan Proposal Kerja Praktik (direkomendasikan paling lambat tiga bulan sebelum periode pelaksanaan).\n- Melakukan survei awal untuk menentukan Mitra KP.\n- Jika mitra KP mensyaratkan proposal, lanjut ke tahap pendaftaran; jika tidak, dapat langsung ke tahap pendaftaran.\n\n(Sumber: [2025] A PANDUAN KERJA PRAKTIK ITK.pdf, hal. 14-33)"
+    },
+    {
+      "no": 2,
+      "pertanyaan": "Bagaimana struktur proposal tugas akhir?",
+      "tool_diharapkan": "retrieve_dokumen",
+      "tool_dipanggil": [
+        "retrieve_dokumen"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "retrieve_dokumen",
+          "argumen": {
+            "query": "struktur proposal tugas akhir",
+            "kategori": "TA"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": true,
+      "guard_aktif": false,
+      "latensi_ms": 44376,
+      "jawaban": "Berdasarkan dokumen pedoman, struktur proposal Tugas Akhir terdiri dari tiga bagian utama: Bagian Awal, Bagian Isi, dan Bagian Akhir. Berikut detailnya:\n\n**Bagian Awal (Skripsi/Proyek/Prototipe):**\n- Halaman Sampul\n- Lembar Persetujuan (ditandatangani oleh dosen pembimbing)\n- Kata Pengantar\n- Abstrak (ikhtisar yang memuat permasalahan, tujuan, dan metode penelitian)\n\n(Sumber: [2025] B PANDUAN KEPENULISAN TUGAS AKHIR ITK_split.pdf, hal. 4-8: \"BAB 1 STRUKTUR PROPOSAL TUGAS AKHIR\", \"1.1. Bagian Awal (Skripsi/Proyek/Prototipe)\")"
+    },
+    {
+      "no": 3,
+      "pertanyaan": "Bagaimana prosedur pendaftaran magang keprofesian?",
+      "tool_diharapkan": "retrieve_dokumen",
+      "tool_dipanggil": [
+        "retrieve_dokumen"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "retrieve_dokumen",
+          "argumen": {
+            "query": "prosedur pendaftaran magang keprofesian",
+            "kategori": "Magang"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": true,
+      "guard_aktif": false,
+      "latensi_ms": 84739,
+      "jawaban": "Berdasarkan dokumen pedoman, berikut adalah prosedur pendaftaran magang keprofesian:\n\n**1. Persiapan Awal:**\n*   Mahasiswa melakukan survey awal untuk menentukan Mitra Magang (sesuai ketentuan program studi).\n*   Mahasiswa berdiskusi dengan dosen wali mengenai keinginan mengajukan magang.\n\n**2. Pengajuan Permohonan:**\nMahasiswa mengajukan permohonan ke Pusat Pembelajaran di luar Prodi dengan membawa:\n*   **Form Pendaftaran Magang (Form. MKP-001)** yang telah diisi dan ditandatangani.\n\n**3. Tahapan Seleksi (tergantung jenis magang):**\n*   **Magang Keprofesian Berdampak:** Mahasiswa mendaftar melalui laman program, kemudian melalui persetujuan Koordinator Prodi, Pimpinan Perguruan Tinggi, seleksi administrasi oleh Belmawa, dan seleksi kualifikasi oleh Mitra.\n*   **Magang Keprofesian Mandiri:** Setelah mendapatkan penawaran/penerimaan dari mitra (untuk berdampak) atau langsung mengajukan mandiri, mahasiswa melakukan pendaftaran magang di Gerbang MBKM.\n\n**4. Penyelesaian Administrasi:**\nMahasiswa menyerahkan Formulir Kesepakatan Konversi yang sudah ditandatangani kepada Pusat Pembelajaran, Dosen Pendamping, Koordinator Prodi, dan Tenaga Kependidikan Akademik Fakultas untuk diarsip.\n\n(Sumber: [2025] 6 BUKU PANDUAN MAGANG KEPROFESIAN INSTITUT TEKNOLOGI KALIMANTAN, hal. 29-31: \"Mahasiswa mengajukan permohonan ke Pusat Pembelajaran diluar Prodi dengan membawa Form Pendaftaran Magang (Form. MKP-001) yang telah diisi dan ditandatangani.\")"
+    },
+    {
+      "no": 4,
+      "pertanyaan": "Apa saja komponen penilaian kerja praktik?",
+      "tool_diharapkan": "retrieve_dokumen",
+      "tool_dipanggil": [
+        "retrieve_dokumen"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "retrieve_dokumen",
+          "argumen": {
+            "query": "komponen penilaian kerja praktik",
+            "kategori": "KP"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": true,
+      "guard_aktif": false,
+      "latensi_ms": 35158,
+      "jawaban": "Menurut dokumen pedoman Kerja Praktik (KP), komponen penilaian KP meliputi:\n\n1. **Penilaian Laporan**  \n2. **Penilaian Poster**  \n3. **Penilaian Presentasi**  \n4. **Penilaian Kinerja**  \n\nNilai KP akan dikeluarkan setelah peserta menyelesaikan semua rangkaian kegiatan KP tersebut, dan nilai ini dijabarkan berdasarkan kriteria-kriteria penilaian di atas (Sumber: [2025] A PANDUAN KERJA PRAKTIK ITK.pdf, hal. 18)."
+    },
+    {
+      "no": 5,
+      "pertanyaan": "Seminar proposal TA saya tanggal 2026-03-02. Kapan paling cepat saya boleh sidang TA?",
+      "tool_diharapkan": "cek_tenggat",
+      "tool_dipanggil": [
+        "retrieve_dokumen",
+        "cek_tenggat"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "retrieve_dokumen",
+          "argumen": {
+            "query": "tenggat sidang TA setelah seminar proposal",
+            "kategori": "TA"
+          }
+        },
+        {
+          "nama": "cek_tenggat",
+          "argumen": {
+            "kegiatan": "TA",
+            "id_tahapan": "sidang_ta",
+            "tanggal_acuan": "2026-03-02"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": false,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 45835,
+      "jawaban": "Berdasarkan dokumen pedoman, tenggat sidang Tugas Akhir (TA) setelah seminar proposal adalah sebagai berikut:\n\n- **Paling cepat**: 2026-06-08\n- **Paling lambat**: 2027-01-11\n\n(Sumber: Panduan TA Program Studi Sistem Informasi 2026, hal. terkait tenggat waktu)\n\n*Disclaimer: Hasil ini merupakan pemeriksaan mandiri berdasarkan pedoman, bukan keputusan resmi program studi.*"
+    },
+    {
+      "no": 6,
+      "pertanyaan": "Seminar hasil KP saya tanggal 20 Oktober 2026, kapan batas revisi laporan KP?",
+      "tool_diharapkan": "cek_tenggat",
+      "tool_dipanggil": [
+        "retrieve_dokumen",
+        "cek_tenggat"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "retrieve_dokumen",
+          "argumen": {
+            "query": "tenggat revisi laporan kerja praktik setelah seminar hasil",
+            "kategori": "KP"
+          }
+        },
+        {
+          "nama": "cek_tenggat",
+          "argumen": {
+            "kegiatan": "KP",
+            "id_tahapan": "revisi_laporan",
+            "tanggal_acuan": "2026-10-20"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": false,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 58414,
+      "jawaban": "Berdasarkan dokumen pedoman, batas waktu pengumpulan Revisi Laporan KP adalah maksimal **3 minggu** setelah pelaksanaan Seminar Hasil KP.\n\nKarena tanggal seminar hasil Anda adalah 20 Oktober 2026, maka tenggat revisi laporan tersebut jatuh pada **10 November 2026**.\n\nPerlu diperhatikan bahwa saat ini (berdasarkan perhitungan sistem), tenggat waktu tersebut sudah **lewat** dengan selisih **-11 hari**.\n\n(Sumber: [2025] A PANDUAN KERJA PRAKTIK ITK.pdf, hal. 25: \"Batas waktu pengumpulan Revisi Laporan KP adalah maksimal 3 minggu setelah peserta KP melaksanakan Seminar Hasil KP.\")"
+    },
+    {
+      "no": 7,
+      "pertanyaan": "Saya seminar proposal tanggal 5 Januari 2026, kapan batas revisi proposal saya?",
+      "tool_diharapkan": "cek_tenggat",
+      "tool_dipanggil": [
+        "retrieve_dokumen",
+        "cek_tenggat"
+      ],
+      "argumen_tool": [
+        {
+          "nama": "retrieve_dokumen",
+          "argumen": {
+            "query": "tenggat revisi proposal tugas akhir setelah seminar proposal",
+            "kategori": "TA"
+          }
+        },
+        {
+          "nama": "cek_tenggat",
+          "argumen": {
+            "kegiatan": "TA",
+            "id_tahapan": "revisi_proposal",
+            "tanggal_acuan": "2026-01-05"
+          }
+        }
+      ],
+      "tool_benar": true,
+      "tool_benar_ketat": false,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 53478,
+      "jawaban": "Berdasarkan dokumen pedoman, batas waktu untuk revisi proposal Tugas Akhir setelah seminar proposal adalah **2 Februari 2026**. Namun, perhitungan tanggal menunjukkan bahwa tenggat tersebut sudah **lewat** (sisa hari: -292 hari) dari tanggal acuan yang Anda sebutkan.\n\n(Sumber: Panduan TA Program Studi Sistem Informasi 2026, hal. terkait: \"Revisi proposal TA\" dengan tenggat 2026-02-02).\n\n*Disclaimer: Hasil ini merupakan pemeriksaan mandiri berdasarkan pedoman, bukan keputusan resmi program studi.*"
+    },
+    {
+      "no": 8,
+      "pertanyaan": "Kapan batas pengumpulan laporan magang saya?",
+      "tool_diharapkan": null,
+      "tool_dipanggil": [],
+      "argumen_tool": [],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 7530,
+      "jawaban": "Untuk menghitung batas pengumpulan laporan magang Anda, saya perlu mengetahui tanggal acuan (biasanya tanggal seminar hasil magang) yang Anda maksud. Kapan tanggal seminar hasil magang Anda?"
+    },
+    {
+      "no": 9,
+      "pertanyaan": "Halo, selamat pagi!",
+      "tool_diharapkan": null,
+      "tool_dipanggil": [],
+      "argumen_tool": [],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 5013,
+      "jawaban": "Selamat pagi! Ada yang bisa saya bantu seputar Tugas Akhir, Kerja Praktik, atau Magang?"
+    },
+    {
+      "no": 10,
+      "pertanyaan": "Siapa presiden Indonesia saat ini?",
+      "tool_diharapkan": null,
+      "tool_dipanggil": [],
+      "argumen_tool": [],
+      "tool_benar": true,
+      "tool_benar_ketat": true,
+      "kategori_benar": null,
+      "guard_aktif": false,
+      "latensi_ms": 5803,
+      "jawaban": "Maaf, saya hanya dapat menjawab pertanyaan seputar Tugas Akhir, Kerja Praktik, dan Magang berdasarkan dokumen pedoman yang tersedia."
+    }
+  ]
+}

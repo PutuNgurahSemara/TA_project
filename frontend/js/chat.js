@@ -12,6 +12,9 @@ const statusIndicator = document.getElementById("statusIndicator");
 const statusText = document.getElementById("statusText");
 
 let isStreaming = false;
+// Riwayat percakapan hanya di memori tab (hilang saat halaman ditutup), maks 6 pesan terakhir
+const MAKS_RIWAYAT = 6;
+let riwayat = [];
 
 // ── Robust Markdown Parser (Zero Dependencies) ───────────────
 function formatInline(text) {
@@ -354,7 +357,7 @@ async function sendMessage() {
         "Content-Type": "application/json",
         "X-Access-Key": accessKey,
       },
-      body: JSON.stringify({ question: question }),
+      body: JSON.stringify({ question: question, riwayat: riwayat }),
     });
 
     if (!res.ok) {
@@ -466,6 +469,12 @@ async function sendMessage() {
     assistant.responseTimeBadge.textContent = `Total Durasi: ${totalDuration}s`;
     assistant.actionsBar.style.display = "flex";
 
+    riwayat.push(
+      { peran: "user", isi: question.slice(0, 4000) },
+      { peran: "asisten", isi: accumulatedText.slice(0, 4000) },
+    );
+    riwayat = riwayat.slice(-MAKS_RIWAYAT);
+
   } catch (err) {
     clearInterval(timerInterval);
     const failDuration = ((performance.now() - startTime) / 1000).toFixed(1);
@@ -517,6 +526,7 @@ function renderSources(sources, container, chipsContainer, excerptCard) {
 
 // ── Clear Chat ────────────────────────────────────────────────
 btnClearChat.addEventListener("click", () => {
+  riwayat = [];
   chatList.innerHTML = "";
   if (heroGreeting) {
     chatList.appendChild(heroGreeting);

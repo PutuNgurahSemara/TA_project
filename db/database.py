@@ -9,6 +9,16 @@ Tabel:
    upload_date TEXT               — ISO-8601 timestamp
    chunk_count INTEGER            — Jumlah chunk yang diindeks
 
+3. eval_log (hanya diisi bila EVAL_LOGGING=True; tanpa teks pertanyaan/data mahasiswa)
+   id              INTEGER PRIMARY KEY AUTOINCREMENT
+   waktu           TEXT     — ISO-8601 timestamp
+   id_pertanyaan   TEXT     — id pertanyaan uji (opsional)
+   mode            TEXT     — 'linier' | 'agentic'
+   tool_dipanggil  TEXT     — JSON list nama tool sesuai urutan (tanpa argumen)
+   hasil_retrieval TEXT     — JSON list {chunk_id, peringkat, panggilan}
+   latensi_ms      INTEGER  — latensi total permintaan
+   guard_aktif     INTEGER  — 1 jika jawaban agentic diganti penolakan standar
+
 2. admins
    id            INTEGER PRIMARY KEY AUTOINCREMENT
    username      TEXT UNIQUE NOT NULL
@@ -19,6 +29,7 @@ Tabel:
 Semua operasi menggunakan context manager agar koneksi otomatis di-commit/close.
 """
 
+import json
 import sqlite3
 from datetime import datetime
 from typing import Any, Optional
@@ -60,6 +71,21 @@ def initialize_db() -> None:
                 password_hash TEXT NOT NULL,
                 role          TEXT NOT NULL DEFAULT 'admin',
                 created_at    TEXT NOT NULL
+            )
+            """
+        )
+        # Tabel log evaluasi
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS eval_log (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                waktu           TEXT    NOT NULL,
+                id_pertanyaan   TEXT,
+                mode            TEXT    NOT NULL,
+                tool_dipanggil  TEXT    NOT NULL,
+                hasil_retrieval TEXT    NOT NULL,
+                latensi_ms      INTEGER NOT NULL,
+                guard_aktif     INTEGER NOT NULL DEFAULT 0
             )
             """
         )
@@ -242,3 +268,42 @@ def count_superadmins() -> int:
         return conn.execute(
             "SELECT COUNT(*) AS n FROM admins WHERE role = 'superadmin'"
         ).fetchone()["n"]
+
+
+# ── Log Evaluasi ─────────────────────────────────────────────────────────────
+
+def add_eval_log(
+    id_pertanyaan: Optional[str],
+    mode: str,
+    tool_dipanggil: list[str],
+    hasil_retrieval: list[dict[str, Any]],
+    latensi_ms: int,
+    guard_aktif: bool,
+) -> None:
+    """
+    Catat satu pertanyaan ke eval_log (untuk MRR, Recall@k, ketepatan tool, latensi).
+    Hanya chunk_id/peringkat yang disimpan; teks pertanyaan, argumen tool (tanggal),
+    dan data akademik mahasiswa sengaja TIDAK dicatat.
+    """
+    ringkas = [
+        {"chunk_id": h["chunk_id"], "peringkat": h["peringkat"], "panggilan": h.get("panggilan", 1)}
+        for h in hasil_retrieval
+    ]
+    with _get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO eval_log
+                (waktu, id_pertanyaan, mode, tool_dipanggil, hasil_retrieval, latensi_ms, guard_aktif)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.now().isoformat(),
+                id_pertanyaan,
+                mode,
+                json.dumps(tool_dipanggil),
+                json.dumps(ringkas),
+                latensi_ms,
+                int(guard_aktif),
+            ),
+        )
+        conn.commit()

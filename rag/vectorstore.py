@@ -65,7 +65,7 @@ def add_chunks(
 
     Args:
         doc_id:     ID unik dokumen (UUID)
-        chunks:     List of {text, page_num, source, chunk_index}
+        chunks:     List of {text, page_num, source, chunk_index, kategori}
         embeddings: Optional, dihitung otomatis oleh LangChain embedding function jika None
     """
     vs = get_vectorstore()
@@ -77,6 +77,7 @@ def add_chunks(
             metadata={
                 "doc_id":      doc_id,
                 "source":      str(c.get("source", "")),
+                "kategori":    str(c.get("kategori", "Umum")),
                 "page_num":    int(c.get("page_num", 1)),
                 "chunk_index": int(c.get("chunk_index", i)),
             },
@@ -130,9 +131,11 @@ def query(
 def similarity_search(
     query_text: str,
     top_k: int = 5,
+    filter: Optional[dict[str, Any]] = None,
 ) -> list[tuple[Document, float]]:
     """
     Similarity search menggunakan LangChain Chroma (mengembalikan tuple (Document, distance)).
+    `filter` diteruskan sebagai filter metadata ChromaDB, mis. {"kategori": "KP"}.
     """
     vs = get_vectorstore()
-    return vs.similarity_search_with_score(query_text, k=top_k)
+    return vs.similarity_search_with_score(query_text, k=top_k, filter=filter)

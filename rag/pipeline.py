@@ -9,6 +9,7 @@ Semua langkah dilaporkan melalui optional progress_callback agar caller / UI bis
 menampilkan status real-time (progress bar / status text).
 """
 
+import re
 from typing import Any, Callable, Generator, Optional
 from rag.parser import parse_document
 from rag.chunker import chunk_pages
@@ -17,7 +18,23 @@ from rag import vectorstore
 from rag.retriever import retrieve
 from rag.generator import generate_answer_stream
 from db.database import add_document_record, delete_document_record
+import config
 from config import CHUNK_SIZE, CHUNK_OVERLAP, TOP_K, EMBED_MODEL
+
+
+def tebak_kategori(nama_dokumen: str) -> str:
+    """
+    Tentukan kategori dokumen ("TA" | "KP" | "Magang") dari nama file-nya.
+    Nama yang tidak cocok diberi "Umum" sehingga tidak ikut tersaring oleh filter kategori.
+    """
+    nama = nama_dokumen.upper()
+    if "MAGANG" in nama:
+        return "Magang"
+    if "KERJA PRAKTIK" in nama or re.search(r"\bKP\b", nama):
+        return "KP"
+    if "TUGAS AKHIR" in nama or re.search(r"\bTA\b", nama):
+        return "TA"
+    return "Umum"
 
 
 # ── Ingest ────────────────────────────────────────────────────────────────────
@@ -69,6 +86,9 @@ def ingest_document(
     chunks = chunk_pages(pages, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP)
     if not chunks:
         raise ValueError("Tidak ada chunk yang dihasilkan dari dokumen.")
+    kategori = tebak_kategori(doc_name)
+    for c in chunks:
+        c["kategori"] = kategori
 
     # Step 3: Embed
     _update(f"🔢 Membuat embedding {len(chunks)} chunks via {EMBED_MODEL} (harap tunggu)...", 0.35)
@@ -103,58 +123,82 @@ def delete_document(doc_id: str) -> None:
 
 # ── Query ─────────────────────────────────────────────────────────────────────
 
-def query_rag(
-    user_question: str,
-    top_k: int = TOP_K,
-) -> dict[str, Any]:
-    """
-    Pipeline query RAG lengkap.
-
-    Tahap:
-      1. Embed pertanyaan user
-      2. Retrieve top-k chunk relevan dari ChromaDB
-      3. Susun prompt + panggil LLM secara streaming
-
-    Args:
-        user_question: Pertanyaan user dalam bahasa natural
-        top_k:         Jumlah chunk konteks yang diambil
-
-    Returns:
-        {
-          "answer_stream": Generator[str] — streaming tokens jawaban LLM,
-          "sources":       List[{source, page_num, excerpt}] — sumber kutipan,
-          "chunks_found":  int — jumlah chunk yang ditemukan,
-        }
-    """
-    # Retrieve chunk relevan
-    chunks = retrieve(user_question, top_k=top_k)
-
-    # Buat daftar sumber (deduplicated by file+page)
+def _ringkas_sumber(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Daftar sumber untuk chip sitasi frontend (deduplicated by file+halaman)."""
     sources: list[dict[str, Any]] = []
     seen: set[tuple] = set()
     for chunk in chunks:
-        key = (chunk["source"], chunk["page_num"])
-        if key not in seen:
-            seen.add(key)
-            excerpt = chunk["text"]
-            if len(excerpt) > 250:
-                excerpt = excerpt[:250] + "..."
-            sources.append(
-                {
-                    "source":   chunk["source"],
-                    "page_num": chunk["page_num"],
-                    "excerpt":  excerpt,
-                    "distance": chunk["distance"],
-                }
-            )
+        key = (chunk["nama_dokumen"], chunk["halaman"])
+        if key in seen:
+            continue
+        seen.add(key)
+        excerpt = chunk["kutipan"]
+        if len(excerpt) > 250:
+            excerpt = excerpt[:250] + "..."
+        sources.append(
+            {
+                "source":   chunk["nama_dokumen"],
+                "page_num": chunk["halaman"],
+                "excerpt":  excerpt,
+                "distance": chunk["jarak"],
+            }
+        )
+    return sources
 
-    # Stream jawaban dari LLM
+
+def query_rag(
+    user_question: str,
+    top_k: int = TOP_K,
+    riwayat: Optional[list[dict[str, str]]] = None,
+    mode: Optional[str] = None,
+) -> dict[str, Any]:
+    """
+    Pipeline query RAG sesuai RETRIEVAL_MODE (config.py) atau argumen `mode`.
+
+    - "linier"  : retrieval SELALU dijalankan dulu, lalu LLM menjawab secara streaming.
+    - "agentic" : agen memilih tool; jawaban diperiksa guard sebelum dikirim, sehingga
+                  jawaban dikirim utuh (tidak token per token).
+    Kedua mode memakai fungsi retrieval yang sama (rag.retriever.retrieve).
+
+    Returns:
+        {
+          "answer_stream":   Generator[str] — token jawaban,
+          "sources":         List[{source, page_num, excerpt, distance}] — sitasi,
+          "chunks_found":    int,
+          "mode":            str,
+          "tool_dipanggil":  List[str] — urutan tool (linier: ["retrieve_dokumen"]),
+          "hasil_retrieval": List[dict] — hasil retrieval (chunk_id, peringkat, ...),
+          "guard_aktif":     bool,
+        }
+    """
+    mode = mode or config.RETRIEVAL_MODE
+
+    if mode == "agentic":
+        from rag.agent import jalankan_agen  # impor lokal: mode linier tidak memuat LangGraph
+
+        hasil = jalankan_agen(user_question, riwayat=riwayat)
+        chunks = hasil["hasil_retrieval"]
+        return {
+            "answer_stream":   iter([hasil["jawaban"]]),
+            "sources":         _ringkas_sumber(chunks),
+            "chunks_found":    len(chunks),
+            "mode":            mode,
+            "tool_dipanggil":  hasil["tool_dipanggil"],
+            "hasil_retrieval": chunks,
+            "guard_aktif":     hasil["guard_aktif"],
+        }
+
+    # Mode linier (baseline): retrieve-then-generate, tanpa tool calling
+    chunks = retrieve(user_question, top_k=top_k)
     answer_stream: Generator[str, None, None] = generate_answer_stream(
-        user_question, chunks
+        user_question, chunks, riwayat=riwayat
     )
-
     return {
-        "answer_stream": answer_stream,
-        "sources":       sources,
-        "chunks_found":  len(chunks),
+        "answer_stream":   answer_stream,
+        "sources":         _ringkas_sumber(chunks),
+        "chunks_found":    len(chunks),
+        "mode":            mode,
+        "tool_dipanggil":  ["retrieve_dokumen"],
+        "hasil_retrieval": chunks,
+        "guard_aktif":     False,
     }
