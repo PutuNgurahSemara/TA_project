@@ -27,7 +27,7 @@ try:
     selected_file = files[idx_pilih]
 except (ValueError, IndexError):
     print("Pilihan default: membuka dokumen pertama...")
-    selected_file = files[2]
+    selected_file = files[0]
 
 print(f"\n🔍 Mem-parsing file: {os.path.basename(selected_file)} ...\n")
 pages = parse_document(selected_file)

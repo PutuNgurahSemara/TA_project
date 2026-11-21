@@ -12,6 +12,10 @@ from typing import Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
+# shortcut: buang chunk sependek footer halaman ("PANDUAN KERJA PRAKTIK 35") yang mengotori
+# hasil retrieval; ganti dengan deteksi header/footer berulang jika dokumen baru lolos filter ini.
+MIN_CHUNK_CHARS = 40
+
 
 def get_text_splitter(chunk_size: int = 600, overlap: int = 100) -> RecursiveCharacterTextSplitter:
     """
@@ -68,7 +72,7 @@ def chunk_pages_to_documents(
         page_chunks = splitter.split_text(text)
         for chunk in page_chunks:
             chunk = chunk.strip()
-            if not chunk:
+            if len(chunk) < MIN_CHUNK_CHARS:
                 continue
             doc = Document(
                 page_content=chunk,
