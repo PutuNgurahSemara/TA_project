@@ -1,18 +1,66 @@
-# 🤖 Chatbot RAG — Tugas Akhir
+# 🤖 Chatbot RAG Pedoman TA, KP, dan Magang — Tugas Akhir
 
-Aplikasi Chatbot berbasis **Retrieval-Augmented Generation (RAG)** untuk mengekstrak dan menjawab pertanyaan berdasarkan dokumen internal (**PDF, DOCX, TXT**) secara cerdas, akurat, dan **100% lokal** (*Zero Data Leak*).
+Aplikasi chatbot berbasis **Retrieval-Augmented Generation (RAG)** yang menjawab pertanyaan mahasiswa
+Program Studi Sistem Informasi ITK tentang **Tugas Akhir (TA), Kerja Praktik (KP), dan Magang**
+berdasarkan dokumen pedoman resmi (**PDF, DOCX, TXT**). Semua proses berjalan **100% lokal**
+(*Zero Data Leak*) tanpa API cloud.
+
+---
+
+## 📌 Persoalan
+
+Mahasiswa yang menjalani TA, KP, atau Magang harus memahami beberapa dokumen pedoman yang tebal
+(puluhan halaman per dokumen). Dalam praktiknya muncul beberapa persoalan:
+
+1. **Mencari informasi spesifik lambat.** Syarat pendaftaran, struktur laporan, atau komponen
+   penilaian tersebar di banyak halaman. Pencarian `Ctrl + F` hanya mencocokkan kata yang persis
+   sama, tidak memahami sinonim dan konteks, dan sulit dipakai untuk isi yang berbentuk tabel.
+2. **Tenggat mudah salah hitung atau terlewat.** Ketentuan seperti "revisi proposal paling lambat
+   20 hari kerja" atau "sidang TA paling cepat 14 minggu dan paling lambat 45 minggu setelah seminar
+   proposal" harus dihitung sendiri oleh mahasiswa.
+3. **Pertanyaan yang sama berulang** kepada dosen pembimbing dan staf program studi.
+4. **Chatbot umum berbasis cloud tidak cocok.** Jawabannya bisa dikarang, tidak merujuk pedoman
+   resmi program studi, dan pertanyaan mahasiswa dikirim ke server pihak ketiga.
+
+**Solusi yang dibangun:**
+- Jawaban diambil dari potongan dokumen pedoman yang relevan, lengkap dengan **sitasi** nama
+  dokumen, halaman, dan kutipan.
+- Perhitungan tenggat dilakukan oleh **kode Python secara deterministik**, bukan oleh LLM.
+- **Guardrail** menolak pertanyaan di luar cakupan dan jawaban yang tidak berdasarkan dokumen
+  (lihat [GUARDRAIL.md](GUARDRAIL.md)).
+- Dua mode retrieval, **linier** (baseline) dan **agentic** (LLM memilih tool), yang memakai fungsi
+  retrieval yang sama sehingga bisa dibandingkan secara adil dalam evaluasi.
+
+---
+
+## 👥 Pengguna
+
+| Peran | Siapa | Akses |
+|---|---|---|
+| **Mahasiswa** (pengguna utama) | Mahasiswa Program Studi Sistem Informasi ITK yang sedang atau akan menjalani TA, KP, atau Magang | Halaman chat (`/`), tanpa login. Opsional memakai kode akses jika `CHAT_ACCESS_KEY` diisi |
+| **Admin** | Dosen atau staf Program Studi Sistem Informasi | Panel admin (`/admin`): upload dan hapus dokumen pedoman, melihat statistik |
+| **Super Admin** | Pengelola sistem di program studi | Semua akses Admin, ditambah mengelola akun admin |
 
 ---
 
 ## ✨ Fitur Utama
 
-- **Model Lokal Penuh (Zero Data Leak):** Menggunakan **Ollama** dengan LLM (`qwen3.5:9b` / `qwen2.5:3b`) dan Embedder (`bge-m3`). Tidak ada data atau dokumen yang dikirim ke internet/cloud luar.
-- **Ekstraksi Tabel Cerdas (*Table-to-Markdown*):** Mendeteksi tabel dalam dokumen secara otomatis dan mengonversinya menjadi format tabel Markdown (`| Kolom 1 | Kolom 2 |`) agar konteks struktural dibaca presisi oleh LLM.
-- **Indikator Waktu Berpikir Real-Time:** Menampilkan stopwatch real-time saat AI memproses pencarian konteks di vector store dan merumuskan jawaban (*Time to First Token*).
-- **Streaming Response (SSE):** Respon AI mengalir kata per kata (*real-time typewriter streaming*) menggunakan Server-Sent Events.
-- **Sitasi Sumber Referensi:** Setiap jawaban dilengkapi chip nama dokumen, nomor halaman asal, dan skor jarak kemiripan (*similarity distance*).
-- **Admin Panel & Manajemen Hak Akses:** Dashboard berbasis sesi web untuk upload dokumen, re-indeks vektor, inspeksi statistik chunk, serta manajemen akun multi-admin (*Super Admin* & *Admin*).
-- **Embedded Vector Database:** Menggunakan ChromaDB persistent lokal, tanpa memerlukan instalasi server database eksternal.
+- **Model Lokal Penuh (Zero Data Leak):** **Ollama** dengan LLM `qwen3.5:9b` (default) atau
+  `qwen2.5:3b`, serta embedder `bge-m3`. Tidak ada dokumen atau pertanyaan yang dikirim ke internet.
+- **Dua Mode Retrieval** (`RETRIEVAL_MODE` di `.env`):
+  - `linier`: retrieval selalu dijalankan sebelum LLM menjawab (*retrieve-then-generate*).
+  - `agentic`: LLM memilih tool `retrieve_dokumen` (cari pedoman) atau `cek_tenggat` (hitung tenggat).
+- **Cek Tenggat Deterministik:** menghitung tenggat sidang TA, revisi proposal TA, revisi laporan KP,
+  dan laporan magang dari tanggal yang disebutkan mahasiswa. Ketentuan disimpan di
+  [`aturan_tenggat.json`](aturan_tenggat.json), sehingga cukup file ini yang diperbarui bila pedoman direvisi.
+- **Filter Kategori Dokumen:** kategori TA, KP, atau Magang ditentukan otomatis dari nama file saat upload.
+- **Ambang Relevansi:** potongan dokumen yang terlalu jauh maknanya dari pertanyaan dibuang.
+- **Ekstraksi Tabel (*Table-to-Markdown*):** tabel di PDF/DOCX dikonversi ke tabel Markdown.
+- **Streaming Response (SSE)** dan **indikator waktu berpikir** real-time.
+- **Sitasi Sumber:** chip nama dokumen, nomor halaman, dan jarak kemiripan pada setiap jawaban.
+- **Log Evaluasi (opsional):** mencatat mode, urutan tool, peringkat chunk, dan latensi untuk
+  menghitung MRR, Recall@k, ketepatan pemilihan tool, dan latensi, tanpa menyimpan data mahasiswa.
+- **Admin Panel:** upload/hapus dokumen dan manajemen akun multi-admin (*Super Admin* dan *Admin*).
 
 ---
 
@@ -20,213 +68,274 @@ Aplikasi Chatbot berbasis **Retrieval-Augmented Generation (RAG)** untuk mengeks
 
 | Komponen | Teknologi | Keterangan |
 | :--- | :--- | :--- |
-| **Backend** | Python 3.11 / 3.12, FastAPI, Uvicorn | Asynchronous REST & SSE API |
-| **Vector Store** | ChromaDB (Persistent Embedded) | Penyimpanan vektor lokal di `./chroma_db` |
-| **Relational DB** | SQLite (`data.db`) | Metadata dokumen dan akun admin |
-| **AI Engine** | Ollama | LLM Runner & Embedding Generator lokal |
-| **Document Parser** | `pdfplumber`, `python-docx` | Ekstraksi teks & tabel dokumen |
-| **Frontend** | Vanilla HTML5, CSS3, Modern JavaScript | Antarmuka responsif tanpa dependensi framework Node.js |
+| **Backend** | Python 3.11 / 3.12, FastAPI, Uvicorn | REST API & SSE streaming |
+| **Orkestrasi LLM** | LangChain, LangGraph (`create_agent`) | Chain mode linier, agen dan tool mode agentic |
+| **Vector Store** | ChromaDB (persistent, embedded) | Penyimpanan vektor lokal di `./chroma_db`, metrik cosine |
+| **Relational DB** | SQLite (`data.db`) | Metadata dokumen, akun admin, log evaluasi |
+| **AI Engine** | Ollama | LLM `qwen3.5:9b` / `qwen2.5:3b`, embedding `bge-m3` |
+| **Document Parser** | `pdfplumber`, `python-docx` | Ekstraksi teks dan tabel |
+| **Frontend** | Vanilla HTML5, CSS3, JavaScript | Tanpa build step / Node.js |
+| **Testing** | pytest | Berjalan tanpa Ollama (vector store dan LLM dipalsukan) |
 
 ---
 
 ## 🚀 Prasyarat Sistem
 
-Sebelum memulai instalasi, pastikan sistem Anda memenuhi prasyarat berikut:
-
-1. **Python:** Versi **3.11** atau **3.12** (Direkomendasikan 3.11).
-   - Periksa versi dengan: `python --version`
-2. **Ollama:** Terinstal dan dapat diakses dari terminal/CMD.
-   - Unduh dari: [ollama.com](https://ollama.com)
-   - Pastikan aplikasi Ollama sedang berjalan di latar belakang (default port: `11434`).
-3. **Model Ollama:** Unduh model LLM dan Embedder berikut melalui terminal:
+1. **Python 3.11 atau 3.12** (direkomendasikan 3.11). Periksa dengan `python --version`.
+2. **Ollama** terinstal dan berjalan di latar belakang (port default `11434`). Unduh dari [ollama.com](https://ollama.com).
+3. **Model Ollama:**
    ```bash
    ollama pull qwen3.5:9b
    ollama pull bge-m3
    ```
-   *(Catatan: Jika spesifikasi RAM/VRAM terbatas, Anda dapat menggunakan model yang lebih ringan seperti `qwen2.5:3b`)*.
+   Jika RAM/VRAM terbatas, gunakan model yang lebih ringan:
+   ```bash
+   ollama pull qwen2.5:3b
+   ```
+   lalu ubah `LLM_MODEL=qwen2.5:3b` di `.env`. Perbandingan keduanya ada di bagian
+   **Batas Penggunaan** di bawah.
 
 ---
 
-## 🛠️ Panduan Instalasi Langkah Demi Langkah
+## 🛠️ Instalasi
 
-### 1. Clone Repositori & Buka Direktori
+### 1. Clone repositori
 ```bash
-git clone <URL_REPOSITORY_ANDA>
-cd TA
+git clone https://github.com/PutuNgurahSemara/TA_project.git
+cd TA_project
 ```
 
----
-
-### 2. (Direkomendasikan) Buat & Aktifkan Virtual Environment
-
-Menggunakan virtual environment sangat disarankan agar paket Python terisolasi dan tidak konflik dengan proyek lain:
+### 2. (Direkomendasikan) Buat dan aktifkan virtual environment
 
 - **Windows (PowerShell):**
   ```powershell
   python -m venv .venv
   .\.venv\Scripts\Activate.ps1
   ```
-  *(Jika muncul pesan error Execution Policy di PowerShell, jalankan: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`)*
-
-- **Windows (Command Prompt / CMD):**
+  *(Jika muncul error Execution Policy, jalankan: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`)*
+- **Windows (CMD):**
   ```cmd
   python -m venv .venv
   .\.venv\Scripts\activate.bat
   ```
-
 - **Linux / macOS:**
   ```bash
   python3 -m venv .venv
   source .venv/bin/activate
   ```
 
----
-
-### 3. Install Dependensi Python
-
-Pastikan pip diperbarui ke versi terbaru, lalu pasang paket dari `requirements.txt`:
+### 3. Install dependensi
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
----
+### 4. Konfigurasi `.env`
 
-### 4. Konfigurasi Environment (`.env`)
+Salin template, lalu sesuaikan nilainya bila perlu:
 
-Salin file template `.env.example` menjadi `.env`:
+- **Windows (PowerShell):** `Copy-Item .env.example .env`
+- **Linux / macOS:** `cp .env.example .env`
 
-- **Windows (PowerShell):**
-  ```powershell
-  Copy-Item .env.example .env
-  ```
-- **Linux / macOS:**
-  ```bash
-  cp .env.example .env
-  ```
-
-Buka file `.env` dan sesuaikan nilainya bila diperlukan:
+Variabel terpenting:
 
 ```ini
-# Ollama Configuration
+# Ollama
 OLLAMA_BASE_URL=http://localhost:11434
-LLM_MODEL=qwen3.5:9b          # Atau qwen2.5:3b jika RAM/VRAM lebih kecil
+LLM_MODEL=qwen3.5:9b            # atau qwen2.5:3b untuk PC terbatas
 EMBED_MODEL=bge-m3
 
-# RAG Hyperparameters
-CHUNK_SIZE=600               # Panjang karakter per chunk dokumen
-CHUNK_OVERLAP=100            # Karakter tumpang tindih antar-chunk
-TOP_K=5                      # Jumlah referensi chunk yang diambil untuk prompt
+# RAG
+CHUNK_SIZE=600                  # panjang karakter per potongan dokumen
+CHUNK_OVERLAP=100               # tumpang tindih antarpotongan
+TOP_K=5                         # jumlah potongan yang diambil
+RELEVANCE_MAX_DISTANCE=0.50     # jarak cosine maksimum; potongan di atasnya dibuang
 
-# Admin Credentials
+# Mode & evaluasi
+RETRIEVAL_MODE=linier           # linier | agentic
+EVAL_LOGGING=false              # true = catat ke tabel eval_log
+
+# Admin & keamanan
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD_HASH=         # Dikosongkan untuk default, atau atur via setup_admin.py
-
-# Security & Access Protection (Opsional)
-CHAT_ACCESS_KEY=             # Kosongkan jika chat terbuka bebas; isi string jika ingin PIN akses
+ADMIN_PASSWORD_HASH=            # kosong = password default admin123
+CHAT_ACCESS_KEY=                # kosong = chat terbuka; isi untuk mewajibkan kode akses
 RATE_LIMIT_CHAT_PER_MINUTE=10
 ```
 
----
+### 5. Atur hari libur nasional (untuk cek tenggat)
 
-### 5. Inisialisasi Database & Akun Admin
-
-Saat aplikasi pertama kali dijalankan, sistem otomatis membuat database `data.db` dan akun Super Admin awal:
-- **Default Username:** `admin`
-- **Default Password:** `admin123`
-
-Untuk mengubah password admin atau menambah akun admin baru, jalankan CLI manajemen admin:
-```bash
-python setup_admin.py
-```
-Ikuti instruksi di layar untuk:
-- Mengubah/Reset password Super Admin
-- Menambahkan akun Admin baru
-- Menghapus akun admin
+Isi daftar `hari_libur` di [`aturan_tenggat.json`](aturan_tenggat.json) dengan format `YYYY-MM-DD`,
+misalnya `["2026-12-25"]`. Jika dibiarkan kosong, tenggat yang dihitung dalam hari kerja bisa lebih
+awal dari tenggat sebenarnya.
 
 ---
 
-## ⚡ Menjalankan Aplikasi
+## ⚡ Menjalankan Aplikasi (Lokal)
 
-Jalankan server aplikasi menggunakan:
+1. Pastikan **Ollama sedang berjalan**:
+   ```bash
+   curl http://localhost:11434/api/tags
+   ```
+2. Jalankan server:
+   ```bash
+   python main.py
+   ```
+   Saat pertama kali dijalankan, sistem otomatis membuat `data.db` dan akun Super Admin awal
+   (username `admin`, password `admin123`). **Segera ganti password ini** dengan `python setup_admin.py`.
+3. Buka di browser:
+   - 💬 Chat mahasiswa: [http://localhost:8000](http://localhost:8000)
+   - ⚙️ Panel admin: [http://localhost:8000/admin](http://localhost:8000/admin)
+4. **Unggah dokumen pedoman** lewat panel admin. Agar kategori terdeteksi otomatis, nama file harus
+   memuat salah satu kata berikut:
+
+   | Kategori | Kata pada nama file |
+   |---|---|
+   | TA | `TUGAS AKHIR` atau `TA` |
+   | KP | `KERJA PRAKTIK` atau `KP` |
+   | Magang | `MAGANG` |
+
+   Singkatan `TA` dan `KP` harus berdiri sendiri, dipisah spasi atau tanda baca selain garis bawah
+   (`Panduan TA 2026.pdf` terdeteksi, `Panduan_TA.pdf` tidak). File yang tidak cocok diberi kategori
+   `Umum` dan tidak ikut tersaring saat pencarian per kategori.
+
+### Mengganti mode retrieval
+Ubah `RETRIEVAL_MODE=linier` atau `RETRIEVAL_MODE=agentic` di `.env`, lalu jalankan ulang server.
+
+### Data lama (sebelum fitur kategori ada)
+Jika `chroma_db` berisi dokumen yang diindeks sebelum fitur kategori ditambahkan, jalankan sekali
+(backup folder `chroma_db` terlebih dahulu):
 ```bash
-python main.py
+python scripts/migrasi_kategori.py
 ```
-
-Setelah server aktif, buka browser Anda di:
-- 💬 **Antarmuka Chat User:** [http://localhost:8000](http://localhost:8000)
-- ⚙️ **Admin Panel Dokumen:** [http://localhost:8000/admin](http://localhost:8000/admin) *(Masuk dengan kredensial admin)*
 
 ---
 
-## 🧰 Skrip Utilitas Tambahan
+## 🧪 Pengujian
 
-### 1. Pengelolaan Akun Admin (`setup_admin.py`)
-```bash
-python setup_admin.py
-```
-Menu CLI interaktif untuk mengelola pengguna admin SQLite (melihat daftar akun, reset password superadmin, menambah akun, atau menghapus akun).
+| Perintah | Butuh Ollama | Isi |
+|---|---|---|
+| `python -m pytest` | Tidak | Test `retrieve_dokumen` (filter kategori, jumlah *k*, ambang jarak, hasil kosong), `cek_tenggat` (aturan 1–4, nilai batas, hari kerja dan libur, input tidak valid), dan mode (linier selalu retrieve, guard agentic) |
+| `python scripts/uji_pemilihan_tool.py` | Ya | 10 contoh pertanyaan untuk mengecek apakah LLM memilih tool yang tepat. Default `qwen3.5:9b`; ganti dengan `--model qwen2.5:3b`. Hasil disimpan ke `scripts/hasil_uji_tool_<model>.json` |
 
-### 2. Inspeksi Hasil Parsing Dokumen (`view_parsed.py`)
-```bash
-python view_parsed.py
-```
-Skrip terminal untuk menguji dan melihat bagaimana parser mengekstrak halaman dan tabel dari dokumen yang diunggah ke format teks/markdown.
+**Log evaluasi:** set `EVAL_LOGGING=true`, lalu kirim pertanyaan uji ke `POST /api/chat` dengan field
+opsional `id_pertanyaan`. Hasilnya tercatat di tabel `eval_log` pada `data.db`.
+
+---
+
+## ⚠️ Batas Penggunaan
+
+**Cakupan dan sifat jawaban**
+- Chatbot hanya menjawab seputar **TA, KP, dan Magang** berdasarkan dokumen yang diunggah admin.
+  Pertanyaan di luar cakupan ditolak.
+- Kualitas jawaban bergantung pada kelengkapan dokumen. Informasi yang tidak ada di dokumen akan
+  dijawab "tidak ditemukan".
+- LLM tetap bisa keliru atau tidak menyertakan sitasi lengkap. **Selalu periksa chip sumber** sebelum
+  mengandalkan jawaban.
+- Jawaban dan hasil cek tenggat **bukan keputusan resmi program studi**.
+
+**Cek tenggat**
+- Hanya untuk empat tahapan di `aturan_tenggat.json` (sidang TA, revisi proposal TA, revisi laporan KP,
+  laporan magang).
+- **Tidak memakai kalender akademik.** Hari libur hanya diperhitungkan jika didaftarkan di `hari_libur`.
+- Hasil bergantung pada tanggal acuan yang dimasukkan mahasiswa.
+
+**Dokumen**
+- Format yang didukung: PDF (teks asli), DOCX, TXT, maksimal **50 MB**.
+- PDF hasil scan (gambar tanpa lapisan teks) tidak didukung karena tidak ada OCR.
+- Dioptimalkan untuk dokumen dan percakapan **berbahasa Indonesia**.
+
+**Percakapan dan privasi**
+- Chatbot hanya mengingat **6 pesan terakhir** dalam satu tab browser. Riwayat hilang saat halaman
+  ditutup dan tidak disimpan di server.
+- Sistem tidak menyimpan data akademik mahasiswa. Log evaluasi hanya berisi id soal, tool, chunk,
+  dan latensi.
+
+**Perangkat dan ketersediaan**
+- Berjalan di **satu PC lokal**. Chatbot hanya dapat dipakai selama PC, Ollama, dan server menyala.
+- Kecepatan bergantung pada perangkat. Hasil uji 10 pertanyaan mode agentic di PC pengembang:
+
+  | Model | Ketepatan pemilihan tool | Rata-rata latensi |
+  |---|---|---|
+  | `qwen3.5:9b` (default) | 10/10 | ±44 detik |
+  | `qwen2.5:3b` (alternatif) | 6/10 | ±4 detik |
+
+- Batas **10 pertanyaan per menit per IP** (dapat diubah). Sesi login admin dan hitungan rate limit
+  hilang saat server dimulai ulang.
+
+---
+
+## 🧰 Skrip Utilitas
+
+| Skrip | Fungsi |
+|---|---|
+| `python setup_admin.py` | Menu CLI untuk melihat, membuat, mereset, dan menghapus akun admin |
+| `python view_parsed.py` | Melihat hasil parsing teks dan tabel dari dokumen di `uploaded_docs/` |
+| `python scripts/migrasi_kategori.py` | Menambahkan kategori ke chunk lama (sekali jalan) |
+| `python scripts/uji_pemilihan_tool.py` | Uji pemilihan tool mode agentic (butuh Ollama) |
 
 ---
 
 ## 📁 Struktur Direktori
 
 ```text
-TA/
-├── backend/                  # Server FastAPI & Logic
-│   ├── auth_routes.py        # Endpoint login, logout, dan manajemen sesi admin
-│   ├── chat_routes.py        # Endpoint streaming SSE untuk tanya-jawab chatbot
-│   ├── document_routes.py    # Endpoint REST untuk upload, indeks, dan hapus file
-│   └── main.py               # Konfigurasi app FastAPI, middleware CORS, dan static mounts
-│
-├── frontend/                 # Tampilan Pengguna & Admin
-│   ├── index.html            # Antarmuka Chatbot User
-│   ├── admin.html            # Dashboard Admin Dokumen & Pengaturan
-│   ├── css/                  # File styling (Tema modern, dark/light mode)
-│   └── js/                   # Logika SSE client, renderer markdown, dan handler upload
-│
-├── rag/                      # RAG Core Engine
-│   ├── parser.py             # Ekstraksi PDF (teks & tabel), DOCX, dan TXT
-│   ├── chunker.py            # Pemotongan teks rekursif dengan chunk overlap
-│   ├── embedder.py           # Komunikasi embedding dengan Ollama (bge-m3)
-│   ├── vectorstore.py        # Antarmuka ChromaDB lokal persistent
-│   ├── retriever.py          # Similarity search pencarian top-k referensi
-│   ├── generator.py          # Generator streaming prompt ke LLM Ollama
-│   └── pipeline.py           # Orkestrasi alur RAG end-to-end
-│
+TA_project/
+├── backend/
+│   ├── main.py               # FastAPI: endpoint chat (SSE), admin, dan file statis
+│   └── security.py           # Rate limiter dan resolusi IP klien
+├── frontend/
+│   ├── index.html            # Halaman chat mahasiswa
+│   ├── admin.html            # Panel admin
+│   ├── css/                  # Styling
+│   └── js/                   # chat.js (SSE + riwayat sesi), admin.js, config.js
+├── rag/
+│   ├── parser.py             # Ekstraksi PDF (teks & tabel), DOCX, TXT
+│   ├── chunker.py            # Pemotongan teks rekursif
+│   ├── embedder.py           # Embedding bge-m3 via Ollama
+│   ├── vectorstore.py        # Antarmuka ChromaDB
+│   ├── retriever.py          # Fungsi retrieval bersama (filter kategori + ambang jarak)
+│   ├── generator.py          # Prompt dan streaming LLM (mode linier)
+│   ├── tools.py              # Tool retrieve_dokumen dan cek_tenggat
+│   ├── tenggat.py            # Perhitungan tenggat deterministik
+│   ├── agent.py              # Agen mode agentic dan guard
+│   └── pipeline.py           # Orkestrasi ingest dan query (pemilihan mode)
 ├── db/
-│   └── database.py           # SQLite connection & CRUD untuk metadata & akun
-│
-├── uploaded_docs/            # Direktori penyimpanan file asli yang diunggah
-├── chroma_db/                # Direktori penyimpanan data vektor ChromaDB lokal
-├── data.db                   # Database SQLite lokal (metadata dokumen & admin)
-├── .env.example              # Contoh template konfigurasi environment
-├── config.py                 # Pemuat variabel konfigurasi global
-├── setup_admin.py            # CLI helper pengelolaan admin
-├── view_parsed.py            # CLI helper inspeksi dokumen hasil parsing
-├── requirements.txt          # Daftar pustaka Python
-└── main.py                   # Entry point server Uvicorn
+│   └── database.py           # SQLite: dokumen, admin, eval_log
+├── tests/                    # Test pytest (tanpa Ollama)
+├── scripts/                  # Migrasi kategori dan uji pemilihan tool
+├── aturan_tenggat.json       # Ketentuan tenggat dan daftar hari libur
+├── auth.py                   # Autentikasi dan sesi admin
+├── config.py                 # Konfigurasi dari .env
+├── main.py                   # Entry point server
+├── setup_admin.py            # CLI pengelolaan admin
+├── view_parsed.py            # CLI inspeksi hasil parsing
+├── GUARDRAIL.md              # Penjelasan guardrail sistem
+├── CATATAN_PERBAIKAN.md      # Catatan perbaikan yang belum dikerjakan
+├── requirements.txt
+└── .env.example
 ```
+
+Folder `uploaded_docs/`, `chroma_db/`, dan file `data.db` dibuat otomatis saat aplikasi berjalan
+dan tidak ikut di-commit.
 
 ---
 
-## ❓ Troubleshooting & Pertanyaan Umum (FAQ)
+## ❓ Troubleshooting
 
-### 1. `Cannot connect to Ollama` / `Connection Refused`
-- Pastikan aplikasi Ollama sudah dibuka dan aktif di komputer Anda.
-- Uji koneksi terminal dengan: `curl http://localhost:11434/api/tags`
-- Jika memakai port selain default, sesuaikan nilai `OLLAMA_BASE_URL` di file `.env`.
+### `Cannot connect to Ollama` / `Connection Refused`
+- Pastikan aplikasi Ollama sudah berjalan.
+- Uji dengan `curl http://localhost:11434/api/tags`.
+- Jika memakai port lain, sesuaikan `OLLAMA_BASE_URL` di `.env`.
 
-### 2. `model "qwen3.5:9b" not found`
-- Jalankan perintah: `ollama pull qwen3.5:9b`
-- Atau ubah `LLM_MODEL` pada file `.env` ke model yang sudah Anda miliki (contoh: `qwen2.5:3b`).
+### `model "qwen3.5:9b" not found`
+- Jalankan `ollama pull qwen3.5:9b`, atau ubah `LLM_MODEL` ke model yang sudah ada (misalnya `qwen2.5:3b`).
 
-### 3. File upload gagal atau tidak terindeks
-- Pastikan ekstensi file adalah `.pdf`, `.docx`, atau `.txt`.
-- Jika dokumen berformat PDF hasil scan (gambar tanpa teks asli), disarankan menggunakan dokumen dengan teks asli atau melakukan OCR terlebih dahulu.
+### File upload gagal atau tidak terindeks
+- Pastikan ekstensi `.pdf`, `.docx`, atau `.txt` dan ukuran maksimal 50 MB.
+- PDF hasil scan perlu di-OCR terlebih dahulu.
+
+### Jawaban selalu "tidak ditemukan"
+- Pastikan dokumen terkait sudah diunggah dan kategorinya benar.
+- `RELEVANCE_MAX_DISTANCE` mungkin terlalu ketat. Naikkan sedikit (misalnya `0.55`) lalu uji ulang.
+
+### `UnicodeEncodeError` saat menjalankan di Windows
+- Sudah ditangani di `main.py` (output dipaksa UTF-8). Pastikan memakai versi terbaru repo ini.
